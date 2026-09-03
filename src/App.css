@@ -1,0 +1,283 @@
+/* Reset default Vite styles */
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+}
+
+/* =====================
+   RESPONSIVE CSS
+   ===================== */
+
+/* Mobile Menu Button — hidden on desktop */
+.mobile-menu-btn {
+  display: none !important;
+}
+
+/* Desktop nav — visible on desktop */
+.desktop-nav {
+  display: flex !important;
+}
+
+/* =====================
+   MEDIA QUERIES
+   ===================== */
+
+/* Tablet & below (≤ 1024px) */
+@media (max-width: 1024px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.6rem; }
+
+  .container {
+    padding: 0 24px;
+  }
+}
+
+/* Mobile (≤ 768px) */
+@media (max-width: 768px) {
+  /* Header */
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .desktop-nav {
+    display: none !important;
+  }
+
+  .desktop-filters {
+    display: none;
+  }
+
+  /* Typography */
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.3rem; }
+  h4, h5 { font-size: 1.1rem; }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  /* Hero Slider Text Responsive */
+  .hero-content-box {
+    padding: 25px 20px !important;
+    width: 92% !important;
+  }
+  
+  .hero-content-box h1 {
+    font-size: 2.2rem !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .hero-content-box p {
+    font-size: 15px !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* Hide custom navigation arrows on mobile/tablet */
+  .custom-nav-next,
+  .custom-nav-prev,
+  .swiper-button-next,
+  .swiper-button-prev {
+    display: none !important;
+  }
+
+  /* FeaturedCollection & NewsSection — stack vertically */
+  .featured-col,
+  .news-col {
+    flex-direction: column !important;
+  }
+
+  /* Section padding */
+  .section {
+    padding: 40px 0 !important;
+  }
+
+  /* Product grid */
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Cart table — make scrollable */
+  .cart-table-wrapper {
+    overflow-x: auto;
+  }
+
+  /* Checkout form stack */
+  .checkout-grid {
+    flex-direction: column !important;
+  }
+
+  /* Footer */
+  footer .container {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Small Mobile (≤ 480px) */
+@media (max-width: 480px) {
+  h1 { font-size: 1.4rem; }
+  
+  .product-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =====================
+   HEADER RESPONSIVE
+   ===================== */
+header {
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .top-bar-row {
+    display: none !important;
+  }
+  
+  .main-nav-row {
+    padding: 15px 20px !important;
+    justify-content: space-between !important;
+  }
+}
+
+/* =====================
+   UTILITY HOVER EFFECTS
+   ===================== */
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.btn-primary:hover {
+  background-color: #007fa0;
+  color: white;
+}
+
+a {
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* =====================
+   HERO SLIDER
+   ===================== */
+.hero-content-box {
+  background-color: rgba(0, 0, 0, 0.4);
+  padding: 40px;
+  border-radius: 8px;
+  max-width: 800px;
+  width: 90%;
+  margin: 0 auto;
+}
+
+.hero-content-box h1 {
+  color: white;
+  margin-bottom: 20px;
+  font-size: 3rem;
+}
+
+.hero-content-box p {
+  font-size: 18px;
+  margin-bottom: 30px;
+  font-family: var(--font-heading);
+}
+
+/* =====================
+   HERO NAVIGATION OVERRIDES
+   ===================== */
+.custom-nav-next,
+.custom-nav-prev {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  cursor: pointer;
+  color: white;
+  background: rgba(0,0,0,0.3);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.custom-nav-prev {
+  left: 30px;
+}
+
+.custom-nav-next {
+  right: 30px;
+}
+
+.custom-nav-next:hover,
+.custom-nav-prev:hover {
+  background: rgba(0,0,0,0.8);
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* Hide default Swiper navigation if it renders */
+.swiper-button-next,
+.swiper-button-prev {
+  display: none !important;
+}
+
+.swiper-pagination-bullet {
+  background: rgba(255,255,255,0.7) !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: white !important;
+  opacity: 1 !important;
+}
+
+/* =====================
+   PRELOADER
+   ===================== */
+.preloader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+}
+
+/* =====================
+   PRODUCT CARD HOVER
+   ===================== */
+.product-card:hover img {
+  transform: scale(1.05);
+}
+
+/* =====================
+   SCROLL BAR STYLING
+   ===================== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}

@@ -1,0 +1,230 @@
+/* @import MUST be first — before any other rules */
+@import url('https://fonts.googleapis.com/css2?family=Abel&family=Lato:wght@300;400;700&family=Open+Sans:wght@400;600&family=Questrial&display=swap');
+
+:root {
+  /* Color Palette */
+  --color-primary-bg: #FFFFFF;
+  --color-primary-text: #333333;
+  --color-body-text: #707070;
+  --color-heading-text: #000000;
+  --color-section-heading: #686868;
+  --color-accent: #00A8CA;
+  --color-accent-hover: #007fa0;
+  --color-dark-bg: #212121;
+  --color-footer-link: #00497D;
+  --color-success: #5B9E2B;
+  --color-separator: #E8E4E3;
+  --color-light-bg: #F5F5F5;
+
+  /* Typography */
+  --font-heading: 'Lato', sans-serif;
+  --font-heading-alt: 'Abel', sans-serif;
+  --font-body: 'Questrial', sans-serif;
+  --font-nav: 'Open Sans', sans-serif;
+
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 2rem;
+  --spacing-lg: 4rem;
+  --spacing-xl: 6rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  font-family: var(--font-body);
+  color: var(--color-body-text);
+  background-color: var(--color-primary-bg);
+  line-height: 1.6;
+  font-size: 14px;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-heading-text);
+  margin-bottom: var(--spacing-sm);
+  font-weight: normal;
+}
+
+h1 {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  text-transform: uppercase;
+  font-size: 2.5rem;
+  letter-spacing: 2px;
+}
+
+h2 {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  font-size: 2rem;
+  letter-spacing: 3px;
+}
+
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  color: var(--color-section-heading);
+}
+
+h4, h5 {
+  font-family: var(--font-heading-alt);
+  font-size: 1.5rem;
+  letter-spacing: 3px;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+}
+
+ul {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-sm);
+}
+
+.section {
+  padding: var(--spacing-lg) 0;
+}
+
+/* Typography utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 10px 24px;
+  font-family: var(--font-nav);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-normal);
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  color: white;
+}
+
+.btn-outline {
+  border-color: var(--color-heading-text);
+  color: var(--color-heading-text);
+  background: transparent;
+}
+
+.btn-outline:hover {
+  background-color: var(--color-heading-text);
+  color: white;
+}
+
+.btn-outline-light {
+  border-color: white;
+  color: white;
+  background: transparent;
+}
+
+.btn-outline-light:hover {
+  background-color: white;
+  color: var(--color-heading-text);
+}
+
+/* Separator */
+.separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: var(--spacing-md) 0;
+}
+
+.separator::before,
+.separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.separator::before {
+  margin-right: .5em;
+}
+
+.separator::after {
+  margin-left: .5em;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.8s ease forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.8s ease forwards;
+}
