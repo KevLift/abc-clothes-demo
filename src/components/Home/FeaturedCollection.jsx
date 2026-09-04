@@ -23,7 +23,7 @@ const FeaturedCollection = () => {
           <p style={{ marginBottom: '30px', color: 'var(--color-body-text)', lineHeight: 1.8 }}>
             Incorporating fine Italian tailoring with modern design, our Gold label suits are a fusion of quality materials and luxury fashion. The highest quality linens, silks and wools have been used to tailor these fine suits all the way from Milan, Italy.
           </p>
-          <Link to="/shop?category=Men" className="btn btn-outline">
+          <Link to="/shop" className="btn btn-outline">
             View Collection
           </Link>
         </motion.div>

@@ -28,6 +28,19 @@ import AdminLayout from './components/Admin/AdminLayout';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import AdminProductsPage from './pages/Admin/AdminProductsPage';
 import AdminOrdersPage from './pages/Admin/AdminOrdersPage';
+import AdminCustomersPage from './pages/Admin/AdminCustomersPage';
+import AdminCategoriesPage from './pages/Admin/AdminCategoriesPage';
+import AdminInventoryPage from './pages/Admin/AdminInventoryPage';
+import AdminPaymentsPage from './pages/Admin/AdminPaymentsPage';
+import AdminReviewsPage from './pages/Admin/AdminReviewsPage';
+import AdminSettingsPage from './pages/Admin/AdminSettingsPage';
+import AdminAnalyticsPage from './pages/Admin/AdminAnalyticsPage';
+import AdminTeamPage from './pages/Admin/AdminTeamPage';
+import AdminNotificationsPage from './pages/Admin/AdminNotificationsPage';
+import AdminInquiriesPage from './pages/Admin/AdminInquiriesPage';
+import AdminSocialPage from './pages/Admin/AdminSocialPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 import './index.css';
 import './App.css';
@@ -52,19 +65,31 @@ function App() {
                       <Route path="/checkout" element={<CheckoutPage />} />
                       <Route path="/wishlist" element={<WishlistPage />} />
                       <Route path="/account" element={<AccountPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/reset-password" element={<ResetPasswordPage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:id" element={<BlogDetailPage />} />
                       <Route path="/faq" element={<FAQPage />} />
 
-                      {/* Admin Routes */}
                       <Route path="/admin" element={<ProtectedRoute adminOnly={true} />}>
                         <Route element={<AdminLayout />}>
                           <Route index element={<AdminDashboardPage />} />
                           <Route path="products" element={<AdminProductsPage />} />
+                          <Route path="categories" element={<AdminCategoriesPage />} />
+                          <Route path="inventory" element={<AdminInventoryPage />} />
                           <Route path="orders" element={<AdminOrdersPage />} />
-                          <Route path="users" element={<div>Users Management (TODO)</div>} />
+                          <Route path="payments" element={<AdminPaymentsPage />} />
+                          <Route path="customers" element={<AdminCustomersPage />} />
+                          <Route path="team" element={<AdminTeamPage />} />
+                          <Route path="reviews" element={<AdminReviewsPage />} />
+                          <Route path="notifications" element={<AdminNotificationsPage />} />
+                          <Route path="settings" element={<AdminSettingsPage />} />
+                          <Route path="analytics" element={<AdminAnalyticsPage />} />
+                          <Route path="inquiries" element={<AdminInquiriesPage />} />
+                          <Route path="social" element={<AdminSocialPage />} />
+                          <Route path="users" element={<AdminCustomersPage />} />
                         </Route>
                       </Route>
 

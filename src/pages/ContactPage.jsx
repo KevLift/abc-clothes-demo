@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import Toast from '../components/UI/Toast';
+import { inquiryService } from '../services/inquiryService';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [showToast, setShowToast] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setShowToast(true);
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    setSubmitting(true);
+    setError('');
+    try {
+      await inquiryService.submitContact(formData);
+      setShowToast(true);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch {
+      setError('Failed to send message. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -23,6 +35,7 @@ const ContactPage = () => {
           </p>
           
           <form onSubmit={handleSubmit}>
+            {error && <p style={{ color: '#c62828', marginBottom: '15px' }}>{error}</p>}
             <div style={{ marginBottom: '20px' }}>
               <input 
                 type="text" 
@@ -62,8 +75,8 @@ const ContactPage = () => {
                 style={{ ...inputStyle, resize: 'vertical' }}
               ></textarea>
             </div>
-            <button type="submit" className="btn btn-primary" style={{ padding: '15px 30px' }}>
-              Send Message
+            <button type="submit" className="btn btn-primary" style={{ padding: '15px 30px' }} disabled={submitting}>
+              {submitting ? 'Sending...' : 'Send Message'}
             </button>
           </form>
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { productService } from '../../services/productService';
-import { products as fallbackProducts } from '../../data/products';
+import { normalizeProduct } from '../../utils/productHelpers';
 import ProductCard from '../Product/ProductCard';
 
 const NewArrivals = () => {
@@ -12,17 +12,11 @@ const NewArrivals = () => {
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
-        const data = await productService.getNewArrivals();
-        const mappedData = data.map(p => ({
-          ...p,
-          price: p.basePrice,
-          images: p.images ? p.images.map(img => img.url) : [],
-          sizes: p.variants ? [...new Set(p.variants.map(v => v.size))] : [],
-          colors: p.variants ? [...new Set(p.variants.map(v => v.color))] : []
-        }));
-        setNewProducts(mappedData.length > 0 ? mappedData : fallbackProducts.filter(p => p.isNew));
+        const data = await productService.getNewArrivals(8);
+        setNewProducts((data || []).map(normalizeProduct));
       } catch (err) {
-        setNewProducts(fallbackProducts.filter(p => p.isNew));
+        console.error(err);
+        setNewProducts([]);
       } finally {
         setIsLoading(false);
       }
@@ -34,10 +28,13 @@ const NewArrivals = () => {
     <section className="section" style={{ padding: '60px 0' }}>
       <div className="container">
         <h3 className="text-center" style={{ marginBottom: '40px' }}>New Arrivals</h3>
-        
         <div style={{ position: 'relative' }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+          ) : newProducts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-body-text)' }}>
+              No products available yet.
+            </div>
           ) : (
             <Swiper
               modules={[Navigation]}
@@ -51,7 +48,7 @@ const NewArrivals = () => {
               }}
               style={{ padding: '10px' }}
             >
-              {newProducts.map(product => (
+              {newProducts.map((product) => (
                 <SwiperSlide key={product.id}>
                   <ProductCard product={product} />
                 </SwiperSlide>

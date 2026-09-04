@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useSearch } from '../../context/SearchContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useAuth } from '../../context/AuthContext';
+import { canAccessAdmin } from '../../utils/roles';
+import { useStoreCategories } from '../../hooks/useStoreCategories';
 import { FaSearch, FaShoppingBag, FaBars, FaHeart, FaUser } from 'react-icons/fa';
 import MobileMenu from './MobileMenu';
 import SearchOverlay from './SearchOverlay';
+import Select from '../UI/Select';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -16,27 +19,25 @@ const Header = () => {
   const { openSearch } = useSearch();
   const { currency, setCurrency, availableCurrencies } = useCurrency();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
+  const { navItems } = useStoreCategories();
 
-  if (location.pathname.startsWith('/admin')) {
-    return null;
-  }
-
+  const isAdminRoute = location.pathname.startsWith('/admin');
   const isTransparentPage = location.pathname === '/' || location.pathname === '/about';
 
   useEffect(() => {
+    if (isAdminRoute) return undefined;
     let scrollTimeout;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       setIsScrolled(currentScrollY > 80);
-      
+
       if (currentScrollY > 80) {
         setIsScrolling(true);
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
           setIsScrolling(false);
-        }, 150); // Show header 150ms after scrolling stops
+        }, 150);
       } else {
         setIsScrolling(false);
       }
@@ -46,10 +47,23 @@ const Header = () => {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(scrollTimeout);
     };
-  }, []);
+  }, [isAdminRoute]);
+
+  if (isAdminRoute) {
+    return null;
+  }
 
   const isHeaderSolid = !isTransparentPage || isScrolled;
   const textColor = isHeaderSolid ? 'var(--color-heading-text)' : 'white';
+
+  const navLinks = [
+    { label: 'Home', to: '/' },
+    ...navItems.slice(0, 6),
+    { label: 'Shop', to: '/shop' },
+    { label: 'About', to: '/about' },
+    { label: 'Blog', to: '/blog' },
+    { label: 'Contact', to: '/contact' },
+  ];
 
   return (
     <>
@@ -67,7 +81,6 @@ const Header = () => {
           transform: isScrolling ? 'translateY(-100%)' : 'translateY(0)',
         }}
       >
-        {/* Top utility bar — hidden on mobile, hidden when scrolled or solid */}
         {!isHeaderSolid && (
           <div
             className="top-bar-row"
@@ -84,34 +97,19 @@ const Header = () => {
               borderBottom: '1px solid rgba(255,255,255,0.15)',
             }}
           >
-            <select
+            <Select
+              variant="ghost"
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.85)',
-                fontFamily: 'var(--font-nav)',
-                fontSize: '10px',
-                textTransform: 'uppercase',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              {availableCurrencies.map(c => (
-                <option key={c} value={c} style={{ color: 'black' }}>{c}</option>
-              ))}
-            </select>
-            {user?.role === 'ADMIN' && (
-              <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold', transition: 'color 0.2s' }}
-                onMouseEnter={e => e.target.style.color = '#e0a800'}
-                onMouseLeave={e => e.target.style.color = 'var(--color-accent)'}
-              >Admin Dashboard</Link>
+              onChange={setCurrency}
+              aria-label="Currency"
+              options={availableCurrencies.map((c) => ({ value: c, label: c }))}
+            />
+            {canAccessAdmin(user) && (
+              <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
+                Admin Dashboard
+              </Link>
             )}
-            <Link to="/account" style={{ color: 'rgba(255,255,255,0.85)', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = 'white'}
-              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.85)'}
-            >Account</Link>
+            <Link to="/account" style={{ color: 'rgba(255,255,255,0.85)' }}>Account</Link>
             <Link to="/wishlist" style={{ color: 'rgba(255,255,255,0.85)' }}>Wishlist</Link>
             <Link to="/cart" style={{ color: 'rgba(255,255,255,0.85)' }}>
               Shopping Bag ({cartCount})
@@ -122,7 +120,6 @@ const Header = () => {
           </div>
         )}
 
-        {/* Main Nav Row */}
         <div
           className="main-nav-row"
           style={{
@@ -132,7 +129,6 @@ const Header = () => {
             padding: isScrolled ? '14px 40px' : '18px 40px',
           }}
         >
-          {/* Hamburger (mobile only) */}
           <button
             className="mobile-menu-btn"
             onClick={() => setIsMobileMenuOpen(true)}
@@ -142,7 +138,6 @@ const Header = () => {
             <FaBars size={22} />
           </button>
 
-          {/* Logo */}
           <Link
             to="/"
             style={{
@@ -152,52 +147,42 @@ const Header = () => {
               letterSpacing: '4px',
               textTransform: 'uppercase',
               color: textColor,
-              transition: 'color 0.3s',
             }}
           >
             ABC CLOTHES
           </Link>
 
-          {/* Desktop Nav Links */}
           <nav
             className="desktop-nav"
             style={{
-              gap: '32px',
+              gap: '28px',
               fontFamily: 'var(--font-nav)',
               fontSize: '11px',
               textTransform: 'uppercase',
               letterSpacing: '1.7px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
             }}
           >
-            {[
-              { label: 'Home', to: '/' },
-              { label: "Men's", to: '/shop?category=Men' },
-              { label: "Women's", to: '/shop?category=Women' },
-              { label: 'New Arrivals', to: '/shop' },
-              { label: 'About', to: '/about' },
-              { label: 'Blog', to: '/blog' },
-              { label: 'Contact', to: '/contact' },
-            ].map(item => (
+            {navLinks.map((item) => (
               <Link
                 key={item.to + item.label}
                 to={item.to}
-                style={{ color: textColor, transition: 'opacity 0.2s' }}
-                onMouseEnter={e => e.target.style.opacity = '0.6'}
-                onMouseLeave={e => e.target.style.opacity = '1'}
+                style={{ color: textColor }}
               >
                 {item.label}
               </Link>
             ))}
           </nav>
 
-          {/* Right icons (search, wishlist, account, cart) — visible when scrolled/solid */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
             {isHeaderSolid && (
               <button onClick={openSearch} style={{ color: textColor, padding: 0 }}>
                 <FaSearch size={16} />
               </button>
             )}
-            {user?.role === 'ADMIN' && (
+            {canAccessAdmin(user) && (
               <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold' }} className="desktop-nav">
                 Dashboard
               </Link>
@@ -208,10 +193,7 @@ const Header = () => {
             <Link to="/wishlist" style={{ color: textColor }} className="desktop-nav">
               <FaHeart size={16} />
             </Link>
-            <Link
-              to="/cart"
-              style={{ color: textColor, position: 'relative' }}
-            >
+            <Link to="/cart" style={{ color: textColor, position: 'relative' }}>
               <FaShoppingBag size={18} />
               {cartCount > 0 && (
                 <span
@@ -239,7 +221,7 @@ const Header = () => {
         </div>
       </header>
 
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} categoryLinks={navItems} />
       <SearchOverlay />
     </>
   );

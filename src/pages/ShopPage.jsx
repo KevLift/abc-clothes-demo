@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { productService } from '../services/productService';
-import { products as fallbackProducts } from '../data/products';
+import { normalizeProduct } from '../utils/productHelpers';
 import ProductGrid from '../components/Product/ProductGrid';
 import ProductFilters from '../components/Product/ProductFilters';
 import Breadcrumb from '../components/UI/Breadcrumb';
 
-const useQuery = () => {
-  return new URLSearchParams(useLocation().search);
-};
+const useQuery = () => new URLSearchParams(useLocation().search);
 
 const ShopPage = () => {
   const query = useQuery();
@@ -16,76 +14,104 @@ const ShopPage = () => {
   const searchQuery = query.get('search') || '';
 
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        const data = await productService.getProducts();
-        // Backend DTO uses images array of objects {url}, map it to simple strings to match frontend
-        const mappedData = data.map(p => ({
-          ...p,
-          price: p.basePrice,
-          images: p.images ? p.images.map(img => img.url) : [],
-          sizes: p.variants ? [...new Set(p.variants.map(v => v.size))] : [],
-          colors: p.variants ? [...new Set(p.variants.map(v => v.color))] : []
-        }));
-        setProducts(mappedData.length > 0 ? mappedData : fallbackProducts);
-      } catch (err) {
-        console.error("Failed to fetch products", err);
-        setProducts(fallbackProducts);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
-
-  const maxProductPrice = Math.max(...fallbackProducts.map(p => p.salePrice || p.price), 200000);
 
   const [filters, setFilters] = useState({
     category: initialCategory,
     sizes: [],
     colors: [],
-    priceRange: maxProductPrice,
+    priceRange: 500000,
   });
-
   const [sort, setSort] = useState('newest');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = React.useRef(null);
 
   useEffect(() => {
-    setFilters(prev => ({ ...prev, category: initialCategory }));
+    setFilters((prev) => ({ ...prev, category: initialCategory }));
   }, [initialCategory]);
 
-  const maxPrice = maxProductPrice;
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [cats, productResult] = await Promise.all([
+          productService.getCategories().catch(() => []),
+          searchQuery
+            ? productService.searchProducts(searchQuery).then((list) => ({ content: list }))
+            : filters.category
+              ? productService.getProducts({
+                  page: 0,
+                  size: 100,
+                  categorySlug: filters.category.toLowerCase().replace(/\s+/g, '-'),
+                }).catch(async () => {
+                  // fallback: fetch all and filter client-side by name
+                  return productService.getProducts({ page: 0, size: 100 });
+                })
+              : productService.getProducts({ page: 0, size: 100 }),
+        ]);
+        setCategories(Array.isArray(cats) ? cats : []);
+        const mapped = (productResult.content || []).map(normalizeProduct);
+        setProducts(mapped);
+        if (mapped.length) {
+          const max = Math.max(...mapped.map((p) => p.salePrice || p.price), 1000);
+          setFilters((prev) => ({
+            ...prev,
+            priceRange: prev.priceRange > max ? max : prev.priceRange,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch products', err);
+        setError('Unable to load products. Please try again.');
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [searchQuery, filters.category]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const maxPrice = useMemo(() => {
+    if (!products.length) return 500000;
+    return Math.max(...products.map((p) => p.salePrice || p.price), 1000);
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
-    let result = products;
+    let result = [...products];
 
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.name.toLowerCase().includes(lowerQuery) || 
-        p.description.toLowerCase().includes(lowerQuery)
+    if (filters.category) {
+      const cat = filters.category.toLowerCase();
+      result = result.filter(
+        (p) =>
+          (p.category || '').toLowerCase() === cat ||
+          (p.categoryName || '').toLowerCase() === cat ||
+          (p.categorySlug || '').toLowerCase() === cat ||
+          (p.categorySlug || '').toLowerCase().includes(cat)
       );
     }
 
-    if (filters.category) {
-      result = result.filter(p => p.category === filters.category);
-    }
-
     if (filters.sizes.length > 0) {
-      result = result.filter(p => p.sizes.some(s => filters.sizes.includes(s)));
+      result = result.filter((p) => (p.sizes || []).some((s) => filters.sizes.includes(s)));
     }
 
     if (filters.colors.length > 0) {
-      result = result.filter(p => p.colors.some(c => filters.colors.includes(c)));
+      result = result.filter((p) => (p.colors || []).some((c) => filters.colors.includes(c)));
     }
 
-    result = result.filter(p => (p.salePrice || p.price) <= filters.priceRange);
+    result = result.filter((p) => (p.salePrice || p.price) <= filters.priceRange);
 
-    // Sorting
     switch (sort) {
       case 'price-low':
         result.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
@@ -96,54 +122,38 @@ const ShopPage = () => {
       case 'name-a':
         result.sort((a, b) => a.name.localeCompare(b.name));
         break;
-      case 'newest':
       default:
-        result.sort((a, b) => (a.isNew === b.isNew) ? 0 : a.isNew ? -1 : 1);
-        break;
+        result.sort((a, b) => (b.featured === a.featured ? 0 : b.featured ? 1 : -1));
     }
 
     return result;
-  }, [filters, sort, searchQuery]);
-
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = React.useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [products, filters, sort]);
 
   const sortOptions = [
     { value: 'newest', label: 'Sort by Latest' },
     { value: 'price-low', label: 'Sort by Price: Low to High' },
     { value: 'price-high', label: 'Sort by Price: High to Low' },
-    { value: 'name-a', label: 'Sort by Name: A-Z' }
+    { value: 'name-a', label: 'Sort by Name: A-Z' },
   ];
-  
-  const currentSortLabel = sortOptions.find(o => o.value === sort)?.label;
+  const currentSortLabel = sortOptions.find((o) => o.value === sort)?.label;
 
   return (
     <div className="container" style={{ paddingTop: '100px', paddingBottom: '60px' }}>
       <Breadcrumb />
-      
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
         <h2>{searchQuery ? `Search Results for "${searchQuery}"` : (filters.category || 'All Products')}</h2>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ fontSize: '12px', color: 'var(--color-body-text)' }}>
             Showing {filteredProducts.length} results
           </span>
-          
+
           <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <button 
+            <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              style={{ 
-                padding: '10px 18px', 
+              style={{
+                padding: '10px 18px',
                 border: '1px solid var(--color-separator)',
                 backgroundColor: 'white',
                 fontFamily: 'var(--font-body)',
@@ -155,55 +165,25 @@ const ShopPage = () => {
                 minWidth: '220px',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                borderRadius: '0'
               }}
             >
               {currentSortLabel}
-              <span style={{ fontSize: '10px', transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>▼</span>
+              <span style={{ fontSize: '10px' }}>▼</span>
             </button>
-
             {isDropdownOpen && (
               <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                width: '100%',
-                backgroundColor: 'white',
-                border: '1px solid var(--color-separator)',
-                borderTop: 'none',
-                zIndex: 100,
-                boxShadow: '0 8px 16px rgba(0,0,0,0.06)',
-                display: 'flex',
-                flexDirection: 'column'
+                position: 'absolute', top: '100%', left: 0, width: '100%',
+                backgroundColor: 'white', border: '1px solid var(--color-separator)',
+                zIndex: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.06)',
               }}>
-                {sortOptions.map(option => (
+                {sortOptions.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => { setSort(option.value); setIsDropdownOpen(false); }}
                     style={{
-                      padding: '12px 18px',
-                      textAlign: 'left',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '13px',
+                      padding: '12px 18px', textAlign: 'left', width: '100%',
+                      fontSize: '13px', border: 'none', cursor: 'pointer',
                       backgroundColor: sort === option.value ? 'var(--color-light-bg)' : 'white',
-                      color: sort === option.value ? 'var(--color-accent)' : 'var(--color-heading-text)',
-                      border: 'none',
-                      borderBottom: '1px solid #f9f9f9',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s ease, color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (sort !== option.value) {
-                        e.target.style.backgroundColor = '#f9f9f9';
-                        e.target.style.color = 'var(--color-accent)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sort !== option.value) {
-                        e.target.style.backgroundColor = 'white';
-                        e.target.style.color = 'var(--color-heading-text)';
-                      }
                     }}
                   >
                     {option.label}
@@ -216,13 +196,20 @@ const ShopPage = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-start' }}>
-        <aside style={{ width: '250px', flexShrink: 0 }} className="desktop-filters">
-          <ProductFilters filters={filters} setFilters={setFilters} maxPrice={maxPrice} />
+        <aside className="shop-filters-sidebar desktop-filters">
+          <ProductFilters
+            filters={filters}
+            setFilters={setFilters}
+            maxPrice={maxPrice}
+            categories={categories}
+          />
         </aside>
-        
+
         <div style={{ flex: 1 }}>
           {isLoading ? (
             <div style={{ padding: '40px', textAlign: 'center' }}>Loading products...</div>
+          ) : error ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#c62828' }}>{error}</div>
           ) : (
             <ProductGrid products={filteredProducts} />
           )}

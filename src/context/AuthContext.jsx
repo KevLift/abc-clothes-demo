@@ -1,59 +1,94 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
-import api from '../services/api';
+import { cartService } from '../services/cartService';
+import { getStoredUser, setStoredUser } from '../services/api';
+import { canAccessAdmin } from '../utils/roles';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('abc_user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState(() => getStoredUser());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('abc_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('abc_user');
-    }
+    setStoredUser(user);
   }, [user]);
 
+  const applyAuthUser = useCallback((data) => {
+    setUser(data);
+    setStoredUser(data);
+  }, []);
+
+  const mergeCartAfterLogin = useCallback(async (role) => {
+    if (role !== 'CUSTOMER') return;
+    try {
+      await cartService.mergeGuestCart();
+    } catch (err) {
+      console.warn('Cart merge skipped', err);
+    }
+  }, []);
+
   const login = async (email, password) => {
+    setLoading(true);
     try {
       const data = await authService.login(email, password);
-      setUser(data);
-      return true;
+      applyAuthUser(data);
+      await mergeCartAfterLogin(data.role);
+      return { success: true, user: data };
     } catch (error) {
-      console.error("Login failed", error);
-      return false;
+      console.error('Login failed', error);
+      return { success: false, error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (name, email, password) => {
+    setLoading(true);
     try {
       const data = await authService.register(name, email, password);
-      setUser(data);
-      return true;
+      applyAuthUser(data);
+      await mergeCartAfterLogin(data.role);
+      return { success: true, user: data };
     } catch (error) {
-      console.error("Registration failed", error);
-      return false;
+      console.error('Registration failed', error);
+      return { success: false, error };
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = user?.refreshToken;
     setUser(null);
+    setStoredUser(null);
+    await authService.logout(refreshToken);
+  };
+
+  const updateUserLocal = (partial) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...partial };
+      setStoredUser(next);
+      return next;
+    });
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated: !!user,
-      login,
-      register,
-      logout
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        isAdmin: canAccessAdmin(user),
+        login,
+        register,
+        logout,
+        updateUserLocal,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

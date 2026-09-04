@@ -1,77 +1,144 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { cartService } from '../services/cartService';
+import { useAuth } from './AuthContext';
+import { findVariantId, mapCartToUiItems } from '../utils/productHelpers';
 
 const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState(() => {
-    const savedCart = localStorage.getItem('abc_cart');
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
-
+  const { user, isAuthenticated } = useAuth();
+  const [cart, setCart] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [error, setError] = useState(null);
+
+  const isCustomer = isAuthenticated && user?.role === 'CUSTOMER';
+
+  const refreshCart = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = isCustomer
+        ? await cartService.getMyCart()
+        : await cartService.getGuestCart();
+      setCart(data);
+      return data;
+    } catch (err) {
+      console.error('Failed to load cart', err);
+      setError(err);
+      setCart(null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [isCustomer]);
 
   useEffect(() => {
-    localStorage.setItem('abc_cart', JSON.stringify(cartItems));
-  }, [cartItems]);
+    refreshCart();
+  }, [refreshCart]);
 
-  const addToCart = (product, size, color, quantity = 1) => {
-    setCartItems(prevItems => {
-      const existingItemIndex = prevItems.findIndex(
-        item => item.id === product.id && item.size === size && item.color === color
-      );
-
-      if (existingItemIndex > -1) {
-        const newItems = [...prevItems];
-        newItems[existingItemIndex].quantity += quantity;
-        return newItems;
+  const addToCart = async (product, size, color, quantity = 1) => {
+    const variantId = findVariantId(product.variants || [], size, color);
+    try {
+      if (isCustomer) {
+        let current = cart;
+        if (!current?.id) {
+          current = await cartService.getMyCart();
+        }
+        await cartService.addItem(current.id, {
+          productId: product.id,
+          variantId,
+          quantity,
+        });
+      } else {
+        await cartService.addGuestItem({
+          productId: product.id,
+          variantId,
+          quantity,
+        });
       }
-
-      return [...prevItems, { ...product, size, color, quantity }];
-    });
-    setIsCartOpen(true);
-    setTimeout(() => setIsCartOpen(false), 3000);
+      await refreshCart();
+      setIsCartOpen(true);
+      setTimeout(() => setIsCartOpen(false), 3000);
+    } catch (err) {
+      console.error('Add to cart failed', err);
+      throw err;
+    }
   };
 
-  const removeFromCart = (id, size, color) => {
-    setCartItems(prevItems => 
-      prevItems.filter(item => !(item.id === id && item.size === size && item.color === color))
-    );
+  const removeFromCart = async (productId, size, color, cartItemId) => {
+    const itemId = cartItemId
+      || cart?.items?.find((i) => i.productId === productId)?.id;
+    if (!itemId) return;
+    try {
+      if (isCustomer && cart?.id) {
+        await cartService.removeItem(cart.id, itemId);
+      } else {
+        await cartService.removeGuestItem(itemId);
+      }
+      await refreshCart();
+    } catch (err) {
+      console.error('Remove from cart failed', err);
+    }
   };
 
-  const updateQuantity = (id, size, color, newQuantity) => {
+  const updateQuantity = async (productId, size, color, newQuantity, cartItemId) => {
     if (newQuantity < 1) return;
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id && item.size === size && item.color === color
-          ? { ...item, quantity: newQuantity }
-          : item
-      )
-    );
+    const itemId = cartItemId
+      || cart?.items?.find((i) => i.productId === productId)?.id;
+    if (!itemId) return;
+    try {
+      if (isCustomer && cart?.id) {
+        await cartService.updateItem(cart.id, itemId, newQuantity);
+      } else {
+        await cartService.updateGuestItem(itemId, newQuantity);
+      }
+      await refreshCart();
+    } catch (err) {
+      console.error('Update quantity failed', err);
+    }
   };
 
-  const clearCart = () => setCartItems([]);
+  const clearCart = async () => {
+    try {
+      if (isCustomer && cart?.id) {
+        await cartService.clearCart(cart.id);
+      } else {
+        await cartService.clearGuestCart();
+      }
+      await refreshCart();
+    } catch (err) {
+      console.error('Clear cart failed', err);
+    }
+  };
 
-  const cartTotal = cartItems.reduce((total, item) => {
-    const price = item.salePrice || item.price;
-    return total + (price * item.quantity);
-  }, 0);
-
-  const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
+  const cartItems = mapCartToUiItems(cart);
+  const cartTotal = cart?.subtotal != null
+    ? Number(cart.subtotal)
+    : cartItems.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+  const cartCount = cart?.itemCount ?? cartItems.reduce((c, i) => c + i.quantity, 0);
 
   return (
-    <CartContext.Provider value={{
-      cartItems,
-      addToCart,
-      removeFromCart,
-      updateQuantity,
-      clearCart,
-      cartTotal,
-      cartCount,
-      isCartOpen,
-      setIsCartOpen
-    }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        cartId: cart?.id || null,
+        cartItems,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        refreshCart,
+        cartTotal,
+        cartCount,
+        loading,
+        error,
+        isCartOpen,
+        setIsCartOpen,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

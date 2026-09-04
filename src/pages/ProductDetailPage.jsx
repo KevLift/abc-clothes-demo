@@ -1,53 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { products as fallbackProducts } from '../data/products';
 import { productService } from '../services/productService';
+import { reviewService } from '../services/reviewService';
+import { inventoryService } from '../services/inventoryService';
+import { normalizeProduct, findVariantId } from '../utils/productHelpers';
 import Breadcrumb from '../components/UI/Breadcrumb';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../context/AuthContext';
+import { canAccessAdmin } from '../utils/roles';
 import { FaHeart, FaRegHeart, FaEdit } from 'react-icons/fa';
 import ProductFormModal from '../components/Admin/ProductFormModal';
+import ProductCard from '../components/Product/ProductCard';
+import Select from '../components/UI/Select';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [related, setRelated] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [stockMsg, setStockMsg] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', body: '' });
+  const [reviewError, setReviewError] = useState('');
+  const [adding, setAdding] = useState(false);
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setIsLoading(true);
-        const data = await productService.getProductById(id);
-        const p = {
-          ...data,
-          price: data.basePrice,
-          images: data.images ? data.images.map(img => img.url) : [],
-          sizes: data.variants ? [...new Set(data.variants.map(v => v.size))] : [],
-          colors: data.variants ? [...new Set(data.variants.map(v => v.color))] : []
-        };
-        setProduct(p);
-      } catch (err) {
-        console.error("Failed to fetch product", err);
-        const fb = fallbackProducts.find(p => p.id === parseInt(id));
-        if (fb) {
-          setProduct(fb);
-        } else {
-          navigate('/404');
+        let data;
+        const isUuid = /^[0-9a-f-]{36}$/i.test(id);
+        try {
+          data = isUuid
+            ? await productService.getProductById(id)
+            : await productService.getProductBySlug(id);
+        } catch {
+          data = await productService.getProductBySlug(id).catch(() => null);
+          if (!data) data = await productService.getProductById(id);
         }
+        const p = normalizeProduct(data);
+        setProduct(p);
+
+        reviewService.getProductReviews(p.id).then(setReviews).catch(() => setReviews([]));
+
+        if (p.categoryId || p.categorySlug) {
+          const page = await productService.getProducts({
+            page: 0,
+            size: 8,
+            categorySlug: p.categorySlug,
+          }).catch(() => ({ content: [] }));
+          setRelated(
+            (page.content || [])
+              .map(normalizeProduct)
+              .filter((r) => r.id !== p.id)
+              .slice(0, 4)
+          );
+        }
+      } catch (err) {
+        console.error('Failed to fetch product', err);
+        navigate('/404');
       } finally {
         setIsLoading(false);
       }
@@ -57,17 +81,43 @@ const ProductDetailPage = () => {
 
   useEffect(() => {
     if (product) {
-      setSelectedSize(product.sizes[0]);
-      setSelectedColor(product.colors[0]);
+      setSelectedSize(product.sizes?.[0] || '');
+      setSelectedColor(product.colors?.[0] || '');
       setQuantity(1);
     }
   }, [product]);
 
+  useEffect(() => {
+    const checkStock = async () => {
+      if (!product) return;
+      const variantId = findVariantId(product.variants, selectedSize, selectedColor);
+      if (!variantId) {
+        setStockMsg('');
+        return;
+      }
+      try {
+        const avail = await inventoryService.getAvailability(variantId);
+        const qty = avail?.availableQty ?? avail?.available ?? null;
+        setStockMsg(qty != null ? (qty > 0 ? `${qty} in stock` : 'Out of stock') : '');
+      } catch {
+        setStockMsg('');
+      }
+    };
+    checkStock();
+  }, [product, selectedSize, selectedColor]);
+
   if (isLoading) return <div style={{ paddingTop: '120px', textAlign: 'center' }}>Loading...</div>;
   if (!product) return null;
 
-  const handleAddToCart = () => {
-    addToCart(product, selectedSize, selectedColor, quantity);
+  const handleAddToCart = async () => {
+    setAdding(true);
+    try {
+      await addToCart(product, selectedSize, selectedColor, quantity);
+    } catch {
+      alert('Failed to add to cart. Please try again.');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleEditSave = async (data) => {
@@ -76,33 +126,61 @@ const ProductDetailPage = () => {
       setIsEditModalOpen(false);
       window.location.reload();
     } catch (err) {
-      console.error("Failed to update product", err);
-      alert("Failed to update product. Please try again.");
+      console.error('Failed to update product', err);
+      alert('Failed to update product. Please try again.');
     }
   };
 
-  const relatedProducts = fallbackProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    setReviewError('');
+    if (!isAuthenticated || user?.role !== 'CUSTOMER') {
+      setReviewError('Please log in as a customer to leave a review.');
+      return;
+    }
+    try {
+      await reviewService.createReview({
+        productId: product.id,
+        rating: Number(reviewForm.rating),
+        title: reviewForm.title,
+        body: reviewForm.body,
+      });
+      setReviewForm({ rating: 5, title: '', body: '' });
+      alert('Review submitted for moderation. Thank you!');
+    } catch (err) {
+      setReviewError(err.response?.data?.message || 'Could not submit review. You may need a completed order.');
+    }
+  };
+
+  const displayPrice = product.compareAtPrice
+    ? product.price
+    : product.salePrice || product.price;
+  const comparePrice = product.compareAtPrice || (product.salePrice ? product.price : null);
 
   return (
     <div className="container" style={{ paddingTop: '120px', paddingBottom: '60px' }}>
       <Breadcrumb />
-      
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', marginBottom: '60px' }}>
         <div style={{ flex: '1 1 50%', minWidth: '300px' }}>
-          <img src={product.images[0]} alt={product.name} style={{ width: '100%', height: 'auto', objectFit: 'cover' }} />
+          <img
+            src={product.images?.[0] || product.image}
+            alt={product.name}
+            style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
+          />
         </div>
-        
-        <div style={{ flex: '1 1 40%', minWidth: '300px', padding: '20px 0', position: 'relative' }}>
+
+        <div style={{ flex: '1 1 40%', minWidth: '300px', padding: '20px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
             <h1 style={{ fontSize: '32px', margin: 0 }}>{product.name}</h1>
-            {user?.role === 'ADMIN' && (
-              <button 
+            {canAccessAdmin(user) && (
+              <button
                 onClick={() => setIsEditModalOpen(true)}
-                style={{ 
-                  backgroundColor: 'white', color: 'var(--color-accent)', border: 'none', 
-                  borderRadius: '50%', width: '35px', height: '35px', display: 'flex', 
+                style={{
+                  backgroundColor: 'white', color: 'var(--color-accent)', border: 'none',
+                  borderRadius: '50%', width: '35px', height: '35px', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
                 }}
                 title="Edit Product"
               >
@@ -110,186 +188,187 @@ const ProductDetailPage = () => {
               </button>
             )}
           </div>
-          
+
           <div style={{ fontSize: '24px', fontFamily: 'var(--font-heading)', marginBottom: '20px' }}>
-            {product.salePrice ? (
+            {comparePrice ? (
               <>
-                <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '15px' }}>{formatPrice(product.price)}</span>
-                <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(product.salePrice)}</span>
+                <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '15px' }}>
+                  {formatPrice(comparePrice)}
+                </span>
+                <span>{formatPrice(displayPrice)}</span>
               </>
             ) : (
-              <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(product.price)}</span>
+              <span>{formatPrice(displayPrice)}</span>
             )}
           </div>
-          
-          <p style={{ color: 'var(--color-body-text)', marginBottom: '30px', fontSize: '15px' }}>{product.description}</p>
-          
-          <div style={{ marginBottom: '25px' }}>
-            <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Size</h5>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {product.sizes.map(size => (
-                <button 
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  style={{
-                    border: `1px solid ${selectedSize === size ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
-                    padding: '8px 20px',
-                    backgroundColor: selectedSize === size ? 'var(--color-heading-text)' : 'transparent',
-                    color: selectedSize === size ? 'white' : 'var(--color-body-text)'
-                  }}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <div style={{ marginBottom: '40px' }}>
-            <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Color</h5>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {product.colors.map(color => (
-                <button 
-                  key={color}
-                  onClick={() => setSelectedColor(color)}
-                  style={{
-                    border: `1px solid ${selectedColor === color ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
-                    padding: '8px 20px',
-                    backgroundColor: selectedColor === color ? 'var(--color-heading-text)' : 'transparent',
-                    color: selectedColor === color ? 'white' : 'var(--color-body-text)'
-                  }}
-                >
-                  {color}
-                </button>
-              ))}
+          <p style={{ color: 'var(--color-body-text)', marginBottom: '20px', fontSize: '15px' }}>
+            {product.description}
+          </p>
+          {stockMsg && (
+            <p style={{ fontSize: '13px', marginBottom: '20px', color: stockMsg.includes('Out') ? '#c62828' : '#2e7d32' }}>
+              {stockMsg}
+            </p>
+          )}
+
+          {(product.sizes || []).length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+              <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Size</h5>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {product.sizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    style={{
+                      border: `1px solid ${selectedSize === size ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
+                      padding: '8px 20px',
+                      backgroundColor: selectedSize === size ? 'var(--color-heading-text)' : 'transparent',
+                      color: selectedSize === size ? 'white' : 'var(--color-body-text)',
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {(product.colors || []).length > 0 && (
+            <div style={{ marginBottom: '40px' }}>
+              <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Color</h5>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {product.colors.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    style={{
+                      border: `1px solid ${selectedColor === color ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
+                      padding: '8px 20px',
+                      backgroundColor: selectedColor === color ? 'var(--color-heading-text)' : 'transparent',
+                      color: selectedColor === color ? 'white' : 'var(--color-body-text)',
+                    }}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', border: '1px solid var(--color-separator)', flex: '0 0 auto' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--color-separator)' }}>
               <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ padding: '15px 20px' }}>-</button>
-              <input 
-                type="number" 
-                value={quantity} 
-                readOnly 
-                style={{ width: '50px', textAlign: 'center', border: 'none', outline: 'none' }} 
-              />
+              <input type="number" value={quantity} readOnly style={{ width: '50px', textAlign: 'center', border: 'none' }} />
               <button onClick={() => setQuantity(quantity + 1)} style={{ padding: '15px 20px' }}>+</button>
             </div>
-            
-            <button 
-              className="btn btn-primary" 
-              onClick={handleAddToCart}
-              style={{ flex: 1, padding: '15px 30px' }}
-            >
-              Add to Cart
+            <button className="btn btn-primary" onClick={handleAddToCart} disabled={adding} style={{ flex: 1, padding: '15px 30px' }}>
+              {adding ? 'Adding...' : 'Add to Cart'}
             </button>
-            
-            <button 
+            <button
               onClick={() => toggleWishlist(product)}
               style={{ fontSize: '28px', color: isInWishlist(product.id) ? 'var(--color-accent)' : 'var(--color-heading-text)' }}
             >
               {isInWishlist(product.id) ? <FaHeart /> : <FaRegHeart />}
             </button>
           </div>
-          
-          <div style={{ marginTop: '40px', borderTop: '1px solid var(--color-separator)', paddingTop: '20px', fontSize: '12px', color: 'var(--color-body-text)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div><strong>SKU:</strong> ABC-{product.id}</div>
-            <div><strong>Category:</strong> <Link to={`/shop?category=${product.category}`} style={{ color: 'var(--color-heading-text)' }}>{product.category}</Link></div>
-            <div><strong>Tags:</strong> {product.subCategory}, Luxury</div>
+
+          <div style={{ marginTop: '40px', borderTop: '1px solid var(--color-separator)', paddingTop: '20px', fontSize: '12px' }}>
+            <div><strong>SKU:</strong> {product.sku || product.id}</div>
+            <div style={{ marginTop: '8px' }}>
+              <strong>Category:</strong>{' '}
+              <Link to={`/shop?category=${encodeURIComponent(product.categorySlug || product.category)}`}>
+                {product.category || 'General'}
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
       <div style={{ marginBottom: '60px' }}>
-        <div style={{ 
-          display: 'flex', 
-          borderBottom: '1px solid var(--color-separator)', 
-          marginBottom: '30px',
-          overflowX: 'auto',
-          whiteSpace: 'nowrap',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch'
-        }}>
-          <button 
-            onClick={() => setActiveTab('description')}
-            style={{ 
-              padding: '15px 30px', 
-              fontSize: '14px', 
-              fontFamily: 'var(--font-heading)',
-              textTransform: 'uppercase',
-              borderBottom: activeTab === 'description' ? '2px solid var(--color-heading-text)' : '2px solid transparent',
-              color: activeTab === 'description' ? 'var(--color-heading-text)' : 'var(--color-section-heading)'
-            }}
-          >
-            Description
-          </button>
-          <button 
-            onClick={() => setActiveTab('additional')}
-            style={{ 
-              padding: '15px 30px', 
-              fontSize: '14px', 
-              fontFamily: 'var(--font-heading)',
-              textTransform: 'uppercase',
-              borderBottom: activeTab === 'additional' ? '2px solid var(--color-heading-text)' : '2px solid transparent',
-              color: activeTab === 'additional' ? 'var(--color-heading-text)' : 'var(--color-section-heading)'
-            }}
-          >
-            Additional Information
-          </button>
-          <button 
-            onClick={() => setActiveTab('reviews')}
-            style={{ 
-              padding: '15px 30px', 
-              fontSize: '14px', 
-              fontFamily: 'var(--font-heading)',
-              textTransform: 'uppercase',
-              borderBottom: activeTab === 'reviews' ? '2px solid var(--color-heading-text)' : '2px solid transparent',
-              color: activeTab === 'reviews' ? 'var(--color-heading-text)' : 'var(--color-section-heading)'
-            }}
-          >
-            Reviews ({product.reviewsCount})
-          </button>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-separator)', marginBottom: '30px' }}>
+          {['description', 'reviews'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '15px 30px',
+                textTransform: 'uppercase',
+                borderBottom: activeTab === tab ? '2px solid var(--color-heading-text)' : '2px solid transparent',
+              }}
+            >
+              {tab === 'reviews' ? `Reviews (${reviews.length})` : 'Description'}
+            </button>
+          ))}
         </div>
-        
-        <div>
-          {activeTab === 'description' && (
-            <div style={{ maxWidth: '800px', lineHeight: 1.8 }}>
-              <p>{product.description}</p>
-              <p style={{ marginTop: '20px' }}>Our materials are carefully sourced from Italy and crafted with precision to ensure the perfect fit. Dry clean only to maintain the quality and longevity of the garment.</p>
-            </div>
-          )}
-          {activeTab === 'additional' && (
-            <table style={{ width: '100%', maxWidth: '600px', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid var(--color-separator)' }}>
-                  <th style={{ padding: '15px 0', textAlign: 'left', width: '30%', color: 'var(--color-heading-text)' }}>Weight</th>
-                  <td style={{ padding: '15px 0' }}>1.5 kg</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid var(--color-separator)' }}>
-                  <th style={{ padding: '15px 0', textAlign: 'left', color: 'var(--color-heading-text)' }}>Dimensions</th>
-                  <td style={{ padding: '15px 0' }}>40 x 30 x 10 cm</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid var(--color-separator)' }}>
-                  <th style={{ padding: '15px 0', textAlign: 'left', color: 'var(--color-heading-text)' }}>Sizes</th>
-                  <td style={{ padding: '15px 0' }}>{product.sizes.join(', ')}</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid var(--color-separator)' }}>
-                  <th style={{ padding: '15px 0', textAlign: 'left', color: 'var(--color-heading-text)' }}>Colors</th>
-                  <td style={{ padding: '15px 0' }}>{product.colors.join(', ')}</td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-          {activeTab === 'reviews' && (
-            <div>
-              <p>Reviews for this product are currently overwhelmingly positive, averaging {product.rating} out of 5 stars from {product.reviewsCount} customers.</p>
-            </div>
-          )}
-        </div>
+
+        {activeTab === 'description' && (
+          <div style={{ maxWidth: '800px', lineHeight: 1.8 }}>
+            <p>{product.description}</p>
+          </div>
+        )}
+
+        {activeTab === 'reviews' && (
+          <div>
+            {reviews.length === 0 ? (
+              <p style={{ color: 'var(--color-body-text)' }}>No reviews yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
+                {reviews.map((r) => (
+                  <div key={r.id} style={{ borderBottom: '1px solid var(--color-separator)', paddingBottom: '15px' }}>
+                    <strong>{r.title || 'Review'}</strong>
+                    <div style={{ fontSize: '13px', margin: '5px 0' }}>{'★'.repeat(r.rating || 0)}</div>
+                    <p style={{ color: 'var(--color-body-text)' }}>{r.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitReview} style={{ maxWidth: '500px', marginTop: '20px' }}>
+              <h4 style={{ marginBottom: '15px' }}>Write a Review</h4>
+              {reviewError && <p style={{ color: '#c62828', marginBottom: '10px' }}>{reviewError}</p>}
+              <label style={{ display: 'block', marginBottom: '10px' }}>
+                Rating
+                <Select
+                  fullWidth
+                  value={String(reviewForm.rating)}
+                  onChange={(v) => setReviewForm({ ...reviewForm, rating: v })}
+                  style={{ marginTop: 5 }}
+                  options={[5, 4, 3, 2, 1].map((n) => ({ value: String(n), label: `${n} stars` }))}
+                />
+              </label>
+              <input
+                placeholder="Title"
+                value={reviewForm.title}
+                onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
+                required
+                style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
+              />
+              <textarea
+                placeholder="Your review"
+                value={reviewForm.body}
+                onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
+                required
+                rows={4}
+                style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
+              />
+              <button type="submit" className="btn btn-primary">Submit Review</button>
+            </form>
+          </div>
+        )}
       </div>
-      
-      <ProductFormModal 
+
+      {related.length > 0 && (
+        <div>
+          <h3 style={{ marginBottom: '30px' }}>Related Products</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
+            {related.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <ProductFormModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleEditSave}

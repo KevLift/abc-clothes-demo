@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
 import Toast from '../UI/Toast';
+import { inquiryService } from '../../services/inquiryService';
 
 const Newsletter = () => {
   const [email, setEmail] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email) {
-      // Mock saving email
+    if (!email) return;
+    setError('');
+    try {
+      await inquiryService.subscribeNewsletter(email);
       setShowToast(true);
       setEmail('');
+    } catch {
+      setError('Subscription failed. Please try again.');
     }
   };
 
@@ -21,11 +27,11 @@ const Newsletter = () => {
         <p style={{ marginBottom: '30px', color: 'var(--color-body-text)' }}>
           Get the latest updates on new products and upcoming sales
         </p>
-        
+        {error && <p style={{ color: '#c62828', marginBottom: '10px' }}>{error}</p>}
         <form onSubmit={handleSubmit} style={{ maxWidth: '500px', margin: '0 auto', display: 'flex' }}>
-          <input 
-            type="email" 
-            placeholder="Your email address" 
+          <input
+            type="email"
+            placeholder="Your email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -35,7 +41,7 @@ const Newsletter = () => {
               border: '1px solid var(--color-separator)',
               borderRight: 'none',
               outline: 'none',
-              fontFamily: 'var(--font-body)'
+              fontFamily: 'var(--font-body)',
             }}
           />
           <button type="submit" className="btn btn-primary" style={{ padding: '12px 30px' }}>
@@ -43,10 +49,10 @@ const Newsletter = () => {
           </button>
         </form>
       </div>
-      <Toast 
-        message="Successfully subscribed to the newsletter!" 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
+      <Toast
+        message="Successfully subscribed to the newsletter!"
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
       />
     </section>
   );

@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useAuth } from '../../context/AuthContext';
+import { canAccessAdmin } from '../../utils/roles';
 import { FaHeart, FaRegHeart, FaEye, FaShoppingBag, FaEdit } from 'react-icons/fa';
 import ProductQuickView from './ProductQuickView';
 import ProductFormModal from '../Admin/ProductFormModal';
@@ -19,9 +20,13 @@ const ProductCard = ({ product }) => {
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
 
-  const handleAddToCart = (e) => {
+  const handleAddToCart = async (e) => {
     e.preventDefault();
-    addToCart(product, product.sizes[0], product.colors[0], 1);
+    try {
+      await addToCart(product, product.sizes?.[0], product.colors?.[0], 1);
+    } catch {
+      alert('Failed to add to cart');
+    }
   };
 
   const handleToggleWishlist = (e) => {
@@ -58,7 +63,7 @@ const ProductCard = ({ product }) => {
               New
             </span>
           )}
-          {user?.role === 'ADMIN' && (
+          {canAccessAdmin(user) && (
             <button 
               onClick={(e) => { e.preventDefault(); setIsEditModalOpen(true); }}
               style={{ 
@@ -75,7 +80,7 @@ const ProductCard = ({ product }) => {
           )}
           
           <img 
-            src={product.images[0]} 
+            src={product.images?.[0] || product.image || 'https://via.placeholder.com/400x500?text=No+Image'} 
             alt={product.name} 
             style={{ 
               width: '100%', 
