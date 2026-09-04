@@ -72,6 +72,7 @@ const AdminProductsPage = () => {
 
       const productId = saved.id || productToEdit?.id;
       if (productId && variants?.length) {
+        const errors = [];
         for (const v of variants) {
           const variantBody = {
             name: v.name,
@@ -79,15 +80,25 @@ const AdminProductsPage = () => {
             price: v.price,
             ...(v.compareAtPrice != null ? { compareAtPrice: v.compareAtPrice } : {}),
             currency: v.currency || raw.currency || 'LKR',
-            optionValues: v.optionValues,
+            optionValues: typeof v.optionValues === 'string'
+              ? v.optionValues
+              : JSON.stringify(v.optionValues || {}),
             position: v.position ?? 0,
             active: v.active !== false,
           };
-          if (v.id) {
-            await productService.updateVariant(productId, v.id, variantBody).catch(() => {});
-          } else {
-            await productService.createVariant(productId, variantBody).catch(() => {});
+          try {
+            if (v.id) {
+              await productService.updateVariant(productId, v.id, variantBody);
+            } else {
+              await productService.createVariant(productId, variantBody);
+            }
+          } catch (err) {
+            console.error('Variant save failed', err);
+            errors.push(err.response?.data?.message || `${v.name || v.sku}: failed`);
           }
+        }
+        if (errors.length) {
+          alert(`Product saved, but some variants failed:\n${errors.join('\n')}`);
         }
       }
 
@@ -98,6 +109,17 @@ const AdminProductsPage = () => {
       console.error('Failed to save product', err);
       const msg = err.response?.data?.message || err.message || 'Please try again.';
       alert(`Failed to save product: ${msg}`);
+    }
+  };
+
+  const openEdit = async (product) => {
+    try {
+      const full = await productService.getProductById(product.id);
+      setProductToEdit(full);
+      setIsModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Could not load product details for editing.');
     }
   };
 
@@ -173,7 +195,7 @@ const AdminProductsPage = () => {
                     <td style={{ padding: '12px' }}>{formatPrice(p.price)}</td>
                     <td style={{ padding: '12px' }}>{p.status || '—'}</td>
                     <td style={{ padding: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button onClick={() => { setProductToEdit(p); setIsModalOpen(true); }} style={{ color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => openEdit(p)} style={{ color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
                       {p.status !== 'ACTIVE' && (
                         <button onClick={() => handlePublish(p.id)} style={{ color: '#27ae60', background: 'none', border: 'none', cursor: 'pointer' }}>Publish</button>
                       )}

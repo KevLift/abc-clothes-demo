@@ -14,11 +14,24 @@ const ProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showQuickView, setShowQuickView] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
   
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
+
+  const openEdit = async (e) => {
+    e.preventDefault();
+    try {
+      const full = await productService.getProductById(product.id);
+      setEditProduct(full);
+      setIsEditModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Could not load product for editing.');
+    }
+  };
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -36,12 +49,44 @@ const ProductCard = ({ product }) => {
 
   const handleEditSave = async (data) => {
     try {
-      await productService.updateProduct(product.id, data);
+      const { variants, ...raw } = data;
+      const productPayload = {
+        name: raw.name,
+        slug: raw.slug,
+        description: raw.description,
+        categoryId: raw.categoryId || undefined,
+        price: raw.price,
+        ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
+        currency: raw.currency,
+        featured: raw.featured,
+      };
+      await productService.updateProduct(product.id, productPayload);
+
+      if (variants?.length) {
+        for (const v of variants) {
+          const variantBody = {
+            name: v.name,
+            sku: v.sku,
+            price: v.price,
+            ...(v.compareAtPrice != null ? { compareAtPrice: v.compareAtPrice } : {}),
+            currency: v.currency || raw.currency || 'LKR',
+            optionValues: typeof v.optionValues === 'string'
+              ? v.optionValues
+              : JSON.stringify(v.optionValues || {}),
+            position: v.position ?? 0,
+            active: v.active !== false,
+          };
+          if (v.id) await productService.updateVariant(product.id, v.id, variantBody);
+          else await productService.createVariant(product.id, variantBody);
+        }
+      }
+
       setIsEditModalOpen(false);
+      setEditProduct(null);
       window.location.reload();
     } catch (err) {
-      console.error("Failed to update product", err);
-      alert("Failed to update product. Please try again.");
+      console.error('Failed to update product', err);
+      alert(err.response?.data?.message || 'Failed to update product. Please try again.');
     }
   };
 
@@ -65,7 +110,7 @@ const ProductCard = ({ product }) => {
           )}
           {canAccessAdmin(user) && (
             <button 
-              onClick={(e) => { e.preventDefault(); setIsEditModalOpen(true); }}
+              onClick={openEdit}
               style={{ 
                 position: 'absolute', top: '10px', right: '10px', zIndex: 20, 
                 backgroundColor: 'white', color: 'var(--color-accent)', border: 'none', 
@@ -142,9 +187,9 @@ const ProductCard = ({ product }) => {
       
       <ProductFormModal 
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => { setIsEditModalOpen(false); setEditProduct(null); }}
         onSave={handleEditSave}
-        productToEdit={product}
+        productToEdit={editProduct || product}
       />
     </>
   );

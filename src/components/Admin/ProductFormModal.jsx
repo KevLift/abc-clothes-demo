@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { productService } from '../../services/productService';
 import Select from '../UI/Select';
+import { parseVariantOptions } from '../../utils/productHelpers';
 
 const modalStyle = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -17,6 +18,13 @@ const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ccc', b
 const emptyVariant = () => ({
   name: '', sku: '', price: '', compareAtPrice: '', size: '', color: '', position: 0, active: true,
 });
+
+const slugPart = (value) => String(value || '')
+  .trim()
+  .toUpperCase()
+  .replace(/[^A-Z0-9]+/g, '-')
+  .replace(/(^-|-$)/g, '')
+  .slice(0, 20);
 
 const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
   const [categories, setCategories] = useState([]);
@@ -37,6 +45,20 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
   useEffect(() => {
     if (!isOpen) return;
     if (productToEdit) {
+      const mappedVariants = (productToEdit.variants || []).map((v) => {
+        const opts = parseVariantOptions(v);
+        return {
+          id: v.id,
+          name: v.name || '',
+          sku: v.sku || '',
+          price: v.price || '',
+          compareAtPrice: v.compareAtPrice || '',
+          size: opts.size || '',
+          color: opts.color || '',
+          position: v.position || 0,
+          active: v.active !== false,
+        };
+      });
       setFormData({
         name: productToEdit.name || '',
         slug: productToEdit.slug || '',
@@ -47,17 +69,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
         compareAtPrice: productToEdit.compareAtPrice || '',
         featured: productToEdit.featured || false,
         currency: productToEdit.currency || 'LKR',
-        variants: (productToEdit.variants || []).map((v) => ({
-          id: v.id,
-          name: v.name || '',
-          sku: v.sku || '',
-          price: v.price || '',
-          compareAtPrice: v.compareAtPrice || '',
-          size: '',
-          color: '',
-          position: v.position || 0,
-          active: v.active !== false,
-        })),
+        variants: mappedVariants.length ? mappedVariants : [emptyVariant()],
         images: productToEdit.images || [],
       });
     } else {
@@ -92,6 +104,11 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
         const size = field === 'size' ? value : variants[index].size;
         const color = field === 'color' ? value : variants[index].color;
         variants[index].name = [size, color].filter(Boolean).join(' / ') || variants[index].name;
+        if (!variants[index].sku) {
+          const base = slugPart(prev.sku) || 'SKU';
+          const parts = [base, slugPart(size), slugPart(color)].filter(Boolean);
+          variants[index].sku = parts.join('-');
+        }
       }
       return { ...prev, variants };
     });
@@ -123,6 +140,35 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
     const slug = formData.slug
       || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
+    const variants = (formData.variants || [])
+      .map((v, i) => {
+        const size = (v.size || '').trim();
+        const color = (v.color || '').trim();
+        const name = (v.name || [size, color].filter(Boolean).join(' / ')).trim();
+        const sku = (v.sku || [slugPart(formData.sku) || 'SKU', slugPart(size), slugPart(color)]
+          .filter(Boolean)
+          .join('-')).trim();
+        if (!size && !color && !name) return null;
+        if (!sku) return null;
+        return {
+          id: v.id,
+          name: name || sku,
+          sku,
+          price: parseFloat(v.price || formData.price) || 0,
+          compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined,
+          currency: formData.currency || 'LKR',
+          optionValues: JSON.stringify({
+            ...(size ? { size } : {}),
+            ...(color ? { color } : {}),
+          }),
+          position: i,
+          active: v.active !== false,
+          size,
+          color,
+        };
+      })
+      .filter(Boolean);
+
     const payload = {
       name: formData.name,
       slug,
@@ -132,22 +178,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
       price: parseFloat(formData.price) || 0,
       featured: !!formData.featured,
       currency: formData.currency || 'LKR',
-      variants: (formData.variants || [])
-        .filter((v) => v.name && v.sku)
-        .map((v, i) => ({
-          id: v.id,
-          name: v.name,
-          sku: v.sku,
-          price: parseFloat(v.price || formData.price) || 0,
-          compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined,
-          currency: formData.currency || 'LKR',
-          optionValues: JSON.stringify({
-            size: v.size || undefined,
-            color: v.color || undefined,
-          }),
-          position: i,
-          active: v.active !== false,
-        })),
+      variants,
     };
 
     if (formData.compareAtPrice) {
@@ -221,12 +252,15 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
             <input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} /> Featured
           </label>
 
-          <h4 style={{ marginBottom: '10px' }}>Variants</h4>
+          <h4 style={{ marginBottom: '6px' }}>Variants (Size / Color)</h4>
+          <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
+            Each size/color combination becomes a selectable option on the product page for customers.
+          </p>
           {formData.variants.map((v, index) => (
             <div key={index} style={{ border: '1px solid #eee', padding: '12px', marginBottom: '10px', borderRadius: '4px' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <input style={inputStyle} placeholder="Size" value={v.size} onChange={(e) => updateVariant(index, 'size', e.target.value)} />
-                <input style={inputStyle} placeholder="Color" value={v.color} onChange={(e) => updateVariant(index, 'color', e.target.value)} />
+                <input style={inputStyle} placeholder="Size (e.g. M, L, XL)" value={v.size} onChange={(e) => updateVariant(index, 'size', e.target.value)} />
+                <input style={inputStyle} placeholder="Color (e.g. Navy, Black)" value={v.color} onChange={(e) => updateVariant(index, 'color', e.target.value)} />
               </div>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <input style={inputStyle} placeholder="Variant name" value={v.name} onChange={(e) => updateVariant(index, 'name', e.target.value)} />

@@ -1,25 +1,35 @@
 /** Parse variant optionValues JSON or name like "Large / Blue" into size/color. */
+export const parseOptionValuesRaw = (raw) => {
+  if (raw == null) return null;
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw !== 'string') return null;
+
+  let text = raw.trim();
+  // Backend used to leak JsonByteArrayInput{{...}} via toString()
+  const wrapper = text.match(/^JsonByteArrayInput\{([\s\S]*)\}$/);
+  if (wrapper) text = wrapper[1].trim();
+
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 export const parseVariantOptions = (variant) => {
   if (!variant) return { size: null, color: null };
   let size = variant.size || null;
   let color = variant.color || null;
 
-  if (variant.optionValues) {
-    try {
-      const opts = typeof variant.optionValues === 'string'
-        ? JSON.parse(variant.optionValues)
-        : variant.optionValues;
-      if (opts && typeof opts === 'object') {
-        size = size || opts.size || opts.Size || opts.SIZE || null;
-        color = color || opts.color || opts.Color || opts.COLOR || null;
-      }
-    } catch {
-      // ignore
-    }
+  const opts = parseOptionValuesRaw(variant.optionValues);
+  if (opts) {
+    size = size || opts.size || opts.Size || opts.SIZE || null;
+    color = color || opts.color || opts.Color || opts.COLOR || null;
   }
 
   if ((!size || !color) && variant.name) {
-    const parts = variant.name.split(/[\/|,|-]/).map((p) => p.trim()).filter(Boolean);
+    const parts = variant.name.split(/[\/|,]/).map((p) => p.trim()).filter(Boolean);
     if (parts.length >= 2) {
       size = size || parts[0];
       color = color || parts[1];
@@ -35,6 +45,7 @@ export const extractSizesAndColors = (variants = []) => {
   const sizes = [];
   const colors = [];
   variants.forEach((v) => {
+    if (v && v.active === false) return;
     const { size, color } = parseVariantOptions(v);
     if (size && !sizes.includes(size)) sizes.push(size);
     if (color && !colors.includes(color)) colors.push(color);
@@ -43,14 +54,15 @@ export const extractSizesAndColors = (variants = []) => {
 };
 
 export const findVariantId = (variants = [], size, color) => {
-  if (!variants.length) return null;
-  const match = variants.find((v) => {
+  const active = (variants || []).filter((v) => v && v.active !== false);
+  if (!active.length) return null;
+  const match = active.find((v) => {
     const opts = parseVariantOptions(v);
     const sizeOk = !size || opts.size === size || v.name?.includes(size);
     const colorOk = !color || opts.color === color || v.name?.includes(color);
     return sizeOk && colorOk;
   });
-  return match?.id || variants[0]?.id || null;
+  return match?.id || active[0]?.id || null;
 };
 
 export const normalizeProduct = (p) => {
@@ -82,7 +94,7 @@ export const normalizeProduct = (p) => {
 export const mapCartToUiItems = (cart) => {
   if (!cart?.items) return [];
   return cart.items.map((item) => {
-    const nameParts = (item.variantName || '').split(/[\/|,|-]/).map((p) => p.trim());
+    const nameParts = (item.variantName || '').split(/[\/|,]/).map((p) => p.trim());
     return {
       id: item.productId,
       productId: item.productId,

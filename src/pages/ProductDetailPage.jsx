@@ -122,12 +122,40 @@ const ProductDetailPage = () => {
 
   const handleEditSave = async (data) => {
     try {
-      await productService.updateProduct(product.id, data);
+      const { variants, ...raw } = data;
+      await productService.updateProduct(product.id, {
+        name: raw.name,
+        slug: raw.slug,
+        description: raw.description,
+        categoryId: raw.categoryId || undefined,
+        price: raw.price,
+        ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
+        currency: raw.currency,
+        featured: raw.featured,
+      });
+      if (variants?.length) {
+        for (const v of variants) {
+          const body = {
+            name: v.name,
+            sku: v.sku,
+            price: v.price,
+            ...(v.compareAtPrice != null ? { compareAtPrice: v.compareAtPrice } : {}),
+            currency: v.currency || raw.currency || 'LKR',
+            optionValues: typeof v.optionValues === 'string'
+              ? v.optionValues
+              : JSON.stringify(v.optionValues || {}),
+            position: v.position ?? 0,
+            active: v.active !== false,
+          };
+          if (v.id) await productService.updateVariant(product.id, v.id, body);
+          else await productService.createVariant(product.id, body);
+        }
+      }
       setIsEditModalOpen(false);
       window.location.reload();
     } catch (err) {
       console.error('Failed to update product', err);
-      alert('Failed to update product. Please try again.');
+      alert(err.response?.data?.message || 'Failed to update product. Please try again.');
     }
   };
 
