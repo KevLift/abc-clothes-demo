@@ -1,25 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { productService } from '../../services/productService';
 import { useCurrency } from '../../context/CurrencyContext';
+import ProductFormModal from '../../components/Admin/ProductFormModal';
 
 const AdminProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState(null);
   const { formatPrice } = useCurrency();
 
+  const fetchProducts = async () => {
+    try {
+      const data = await productService.getProducts();
+      setProducts(data);
+    } catch (err) {
+      console.error("Failed to load products", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await productService.getProducts();
-        setProducts(data);
-      } catch (err) {
-        console.error("Failed to load products", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProducts();
   }, []);
+
+  const handleSaveProduct = async (productData) => {
+    try {
+      if (productToEdit) {
+        await productService.updateProduct(productToEdit.id, productData);
+      } else {
+        await productService.createProduct(productData);
+      }
+      setIsModalOpen(false);
+      setProductToEdit(null);
+      fetchProducts();
+    } catch (err) {
+      console.error("Failed to save product", err);
+      alert("Failed to save product. Please try again.");
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      try {
+        await productService.deleteProduct(id);
+        fetchProducts();
+      } catch (err) {
+        console.error("Failed to delete product", err);
+        alert("Failed to delete product.");
+      }
+    }
+  };
+
+  const openAddModal = () => {
+    setProductToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (product) => {
+    setProductToEdit(product);
+    setIsModalOpen(true);
+  };
 
   if (loading) return <div>Loading products...</div>;
 
@@ -27,7 +69,7 @@ const AdminProductsPage = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1>Products Management</h1>
-        <button className="btn btn-primary" style={{ padding: '10px 20px' }}>Add Product</button>
+        <button onClick={openAddModal} className="btn btn-primary" style={{ padding: '10px 20px' }}>Add Product</button>
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -51,14 +93,21 @@ const AdminProductsPage = () => {
                 <td style={{ padding: '15px' }}>{product.categoryName || product.category}</td>
                 <td style={{ padding: '15px' }}>{formatPrice(product.salePrice || product.basePrice || product.price)}</td>
                 <td style={{ padding: '15px' }}>
-                  <button style={{ marginRight: '10px', color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
-                  <button style={{ color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                  <button onClick={() => openEditModal(product)} style={{ marginRight: '10px', color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
+                  <button onClick={() => handleDeleteProduct(product.id)} style={{ color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      
+      <ProductFormModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveProduct}
+        productToEdit={productToEdit}
+      />
     </div>
   );
 };

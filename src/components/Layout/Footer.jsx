@@ -1,8 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FaInstagram, FaFacebookF, FaTwitter, FaPinterestP, FaYoutube } from 'react-icons/fa';
 
 const Footer = () => {
+  const location = useLocation();
+
+  if (location.pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <footer style={{
       backgroundColor: 'var(--color-dark-bg)',

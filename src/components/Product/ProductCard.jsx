@@ -3,16 +3,21 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCurrency } from '../../context/CurrencyContext';
-import { FaHeart, FaRegHeart, FaEye, FaShoppingBag } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import { FaHeart, FaRegHeart, FaEye, FaShoppingBag, FaEdit } from 'react-icons/fa';
 import ProductQuickView from './ProductQuickView';
+import ProductFormModal from '../Admin/ProductFormModal';
+import { productService } from '../../services/productService';
 
 const ProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showQuickView, setShowQuickView] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
+  const { user } = useAuth();
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -22,6 +27,17 @@ const ProductCard = ({ product }) => {
   const handleToggleWishlist = (e) => {
     e.preventDefault();
     toggleWishlist(product);
+  };
+
+  const handleEditSave = async (data) => {
+    try {
+      await productService.updateProduct(product.id, data);
+      setIsEditModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to update product", err);
+      alert("Failed to update product. Please try again.");
+    }
   };
 
   return (
@@ -41,6 +57,21 @@ const ProductCard = ({ product }) => {
             <span style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'var(--color-heading-text)', color: 'white', padding: '5px 10px', fontSize: '11px', textTransform: 'uppercase', zIndex: 10 }}>
               New
             </span>
+          )}
+          {user?.role === 'ADMIN' && (
+            <button 
+              onClick={(e) => { e.preventDefault(); setIsEditModalOpen(true); }}
+              style={{ 
+                position: 'absolute', top: '10px', right: '10px', zIndex: 20, 
+                backgroundColor: 'white', color: 'var(--color-accent)', border: 'none', 
+                borderRadius: '50%', width: '35px', height: '35px', display: 'flex', 
+                alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+              }}
+              title="Edit Product"
+            >
+              <FaEdit size={16} />
+            </button>
           )}
           
           <img 
@@ -96,6 +127,13 @@ const ProductCard = ({ product }) => {
       {showQuickView && (
         <ProductQuickView product={product} onClose={() => setShowQuickView(false)} />
       )}
+      
+      <ProductFormModal 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleEditSave}
+        productToEdit={product}
+      />
     </>
   );
 };

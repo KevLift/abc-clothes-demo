@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useSearch } from '../../context/SearchContext';
 import { useCurrency } from '../../context/CurrencyContext';
+import { useAuth } from '../../context/AuthContext';
 import { FaSearch, FaShoppingBag, FaBars, FaHeart, FaUser } from 'react-icons/fa';
 import MobileMenu from './MobileMenu';
 import SearchOverlay from './SearchOverlay';
@@ -14,8 +15,13 @@ const Header = () => {
   const { cartCount } = useCart();
   const { openSearch } = useSearch();
   const { currency, setCurrency, availableCurrencies } = useCurrency();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  if (location.pathname.startsWith('/admin')) {
+    return null;
+  }
 
   const isTransparentPage = location.pathname === '/' || location.pathname === '/about';
 
@@ -96,6 +102,12 @@ const Header = () => {
                 <option key={c} value={c} style={{ color: 'black' }}>{c}</option>
               ))}
             </select>
+            {user?.role === 'ADMIN' && (
+              <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.target.style.color = '#e0a800'}
+                onMouseLeave={e => e.target.style.color = 'var(--color-accent)'}
+              >Admin Dashboard</Link>
+            )}
             <Link to="/account" style={{ color: 'rgba(255,255,255,0.85)', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = 'white'}
               onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.85)'}
@@ -184,6 +196,11 @@ const Header = () => {
               <button onClick={openSearch} style={{ color: textColor, padding: 0 }}>
                 <FaSearch size={16} />
               </button>
+            )}
+            {user?.role === 'ADMIN' && (
+              <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold' }} className="desktop-nav">
+                Dashboard
+              </Link>
             )}
             <Link to="/account" style={{ color: textColor }} className="desktop-nav">
               <FaUser size={16} />

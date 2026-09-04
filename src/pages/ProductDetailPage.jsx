@@ -6,7 +6,9 @@ import Breadcrumb from '../components/UI/Breadcrumb';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
+import { FaHeart, FaRegHeart, FaEdit } from 'react-icons/fa';
+import ProductFormModal from '../components/Admin/ProductFormModal';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -18,10 +20,12 @@ const ProductDetailPage = () => {
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -66,6 +70,17 @@ const ProductDetailPage = () => {
     addToCart(product, selectedSize, selectedColor, quantity);
   };
 
+  const handleEditSave = async (data) => {
+    try {
+      await productService.updateProduct(product.id, data);
+      setIsEditModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to update product", err);
+      alert("Failed to update product. Please try again.");
+    }
+  };
+
   const relatedProducts = fallbackProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
   return (
@@ -77,8 +92,24 @@ const ProductDetailPage = () => {
           <img src={product.images[0]} alt={product.name} style={{ width: '100%', height: 'auto', objectFit: 'cover' }} />
         </div>
         
-        <div style={{ flex: '1 1 40%', minWidth: '300px', padding: '20px 0' }}>
-          <h1 style={{ fontSize: '32px', marginBottom: '15px' }}>{product.name}</h1>
+        <div style={{ flex: '1 1 40%', minWidth: '300px', padding: '20px 0', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
+            <h1 style={{ fontSize: '32px', margin: 0 }}>{product.name}</h1>
+            {user?.role === 'ADMIN' && (
+              <button 
+                onClick={() => setIsEditModalOpen(true)}
+                style={{ 
+                  backgroundColor: 'white', color: 'var(--color-accent)', border: 'none', 
+                  borderRadius: '50%', width: '35px', height: '35px', display: 'flex', 
+                  alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                }}
+                title="Edit Product"
+              >
+                <FaEdit size={16} />
+              </button>
+            )}
+          </div>
           
           <div style={{ fontSize: '24px', fontFamily: 'var(--font-heading)', marginBottom: '20px' }}>
             {product.salePrice ? (
@@ -257,6 +288,13 @@ const ProductDetailPage = () => {
           )}
         </div>
       </div>
+      
+      <ProductFormModal 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleEditSave}
+        productToEdit={product}
+      />
     </div>
   );
 };
