@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { productService } from '../services/productService';
 import { reviewService } from '../services/reviewService';
-import { inventoryService } from '../services/inventoryService';
-import { normalizeProduct, findVariantId } from '../utils/productHelpers';
+import { normalizeProduct } from '../utils/productHelpers';
+import { saveVariantsWithStock } from '../utils/saveVariantsWithStock';
+import { useProductVariantState } from '../hooks/useProductVariantState';
 import Breadcrumb from '../components/UI/Breadcrumb';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -21,11 +22,7 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [stockMsg, setStockMsg] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
-  const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', body: '' });
@@ -36,6 +33,25 @@ const ProductDetailPage = () => {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
   const { user, isAuthenticated } = useAuth();
+
+  const {
+    availableSizes,
+    availableColors,
+    selectedSize,
+    selectedColor,
+    selectSize,
+    selectColor,
+    quantity,
+    setQuantity,
+    selectedVariant,
+    price,
+    compareAtPrice,
+    stockMessage,
+    inStock,
+    canAddToCart,
+    maxQty,
+    isCombinationInStock,
+  } = useProductVariantState(product);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -79,37 +95,14 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id, navigate]);
 
-  useEffect(() => {
-    if (product) {
-      setSelectedSize(product.sizes?.[0] || '');
-      setSelectedColor(product.colors?.[0] || '');
-      setQuantity(1);
-    }
-  }, [product]);
-
-  useEffect(() => {
-    const checkStock = async () => {
-      if (!product) return;
-      const variantId = findVariantId(product.variants, selectedSize, selectedColor);
-      if (!variantId) {
-        setStockMsg('');
-        return;
-      }
-      try {
-        const avail = await inventoryService.getAvailability(variantId);
-        const qty = avail?.availableQty ?? avail?.available ?? null;
-        setStockMsg(qty != null ? (qty > 0 ? `${qty} in stock` : 'Out of stock') : '');
-      } catch {
-        setStockMsg('');
-      }
-    };
-    checkStock();
-  }, [product, selectedSize, selectedColor]);
-
   if (isLoading) return <div style={{ paddingTop: '120px', textAlign: 'center' }}>Loading...</div>;
   if (!product) return null;
 
   const handleAddToCart = async () => {
+    if (!canAddToCart) {
+      alert(inStock ? 'Please select a valid size and color.' : 'This combination is out of stock.');
+      return;
+    }
     setAdding(true);
     try {
       await addToCart(product, selectedSize, selectedColor, quantity);
@@ -134,22 +127,8 @@ const ProductDetailPage = () => {
         featured: raw.featured,
       });
       if (variants?.length) {
-        for (const v of variants) {
-          const body = {
-            name: v.name,
-            sku: v.sku,
-            price: v.price,
-            ...(v.compareAtPrice != null ? { compareAtPrice: v.compareAtPrice } : {}),
-            currency: v.currency || raw.currency || 'LKR',
-            optionValues: typeof v.optionValues === 'string'
-              ? v.optionValues
-              : JSON.stringify(v.optionValues || {}),
-            position: v.position ?? 0,
-            active: v.active !== false,
-          };
-          if (v.id) await productService.updateVariant(product.id, v.id, body);
-          else await productService.createVariant(product.id, body);
-        }
+        const errors = await saveVariantsWithStock(product.id, variants, raw.currency || 'LKR');
+        if (errors.length) alert(`Saved with some stock errors:\n${errors.join('\n')}`);
       }
       setIsEditModalOpen(false);
       window.location.reload();
@@ -180,11 +159,6 @@ const ProductDetailPage = () => {
     }
   };
 
-  const displayPrice = product.compareAtPrice
-    ? product.price
-    : product.salePrice || product.price;
-  const comparePrice = product.compareAtPrice || (product.salePrice ? product.price : null);
-
   return (
     <div className="container" style={{ paddingTop: '120px', paddingBottom: '60px' }}>
       <Breadcrumb />
@@ -192,7 +166,7 @@ const ProductDetailPage = () => {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', marginBottom: '60px' }}>
         <div style={{ flex: '1 1 50%', minWidth: '300px' }}>
           <img
-            src={product.images?.[0] || product.image}
+            src={product.images?.[0] || product.image || '/images/product-placeholder.svg'}
             alt={product.name}
             style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
           />
@@ -203,6 +177,7 @@ const ProductDetailPage = () => {
             <h1 style={{ fontSize: '32px', margin: 0 }}>{product.name}</h1>
             {canAccessAdmin(user) && (
               <button
+                type="button"
                 onClick={() => setIsEditModalOpen(true)}
                 style={{
                   backgroundColor: 'white', color: 'var(--color-accent)', border: 'none',
@@ -218,81 +193,121 @@ const ProductDetailPage = () => {
           </div>
 
           <div style={{ fontSize: '24px', fontFamily: 'var(--font-heading)', marginBottom: '20px' }}>
-            {comparePrice ? (
+            {compareAtPrice ? (
               <>
                 <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '15px' }}>
-                  {formatPrice(comparePrice)}
+                  {formatPrice(compareAtPrice)}
                 </span>
-                <span>{formatPrice(displayPrice)}</span>
+                <span>{formatPrice(price)}</span>
               </>
             ) : (
-              <span>{formatPrice(displayPrice)}</span>
+              <span>{formatPrice(price)}</span>
             )}
           </div>
 
           <p style={{ color: 'var(--color-body-text)', marginBottom: '20px', fontSize: '15px' }}>
             {product.description}
           </p>
-          {stockMsg && (
-            <p style={{ fontSize: '13px', marginBottom: '20px', color: stockMsg.includes('Out') ? '#c62828' : '#2e7d32' }}>
-              {stockMsg}
+
+          {stockMessage && (
+            <p style={{
+              fontSize: '13px',
+              marginBottom: '20px',
+              color: !inStock || stockMessage.includes('Out') || stockMessage.includes('Select')
+                ? '#c62828'
+                : '#2e7d32',
+              fontWeight: 600,
+            }}
+            >
+              {stockMessage}
             </p>
           )}
 
-          {(product.sizes || []).length > 0 && (
+          {availableSizes.length > 0 && (
             <div style={{ marginBottom: '25px' }}>
               <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Size</h5>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    style={{
-                      border: `1px solid ${selectedSize === size ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
-                      padding: '8px 20px',
-                      backgroundColor: selectedSize === size ? 'var(--color-heading-text)' : 'transparent',
-                      color: selectedSize === size ? 'white' : 'var(--color-body-text)',
-                    }}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {availableSizes.map((size) => {
+                  const comboOk = !selectedColor || isCombinationInStock(size, selectedColor);
+                  return (
+                    <button
+                      type="button"
+                      key={size}
+                      onClick={() => selectSize(size)}
+                      style={{
+                        border: `1px solid ${selectedSize === size ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
+                        padding: '8px 20px',
+                        backgroundColor: selectedSize === size ? 'var(--color-heading-text)' : 'transparent',
+                        color: selectedSize === size ? 'white' : 'var(--color-body-text)',
+                        opacity: comboOk ? 1 : 0.45,
+                        textDecoration: comboOk ? 'none' : 'line-through',
+                      }}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {(product.colors || []).length > 0 && (
+          {availableColors.length > 0 && (
             <div style={{ marginBottom: '40px' }}>
               <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Color</h5>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    style={{
-                      border: `1px solid ${selectedColor === color ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
-                      padding: '8px 20px',
-                      backgroundColor: selectedColor === color ? 'var(--color-heading-text)' : 'transparent',
-                      color: selectedColor === color ? 'white' : 'var(--color-body-text)',
-                    }}
-                  >
-                    {color}
-                  </button>
-                ))}
+                {availableColors.map((color) => {
+                  const comboOk = !selectedSize || isCombinationInStock(selectedSize, color);
+                  return (
+                    <button
+                      type="button"
+                      key={color}
+                      onClick={() => selectColor(color)}
+                      style={{
+                        border: `1px solid ${selectedColor === color ? 'var(--color-heading-text)' : 'var(--color-separator)'}`,
+                        padding: '8px 20px',
+                        backgroundColor: selectedColor === color ? 'var(--color-heading-text)' : 'transparent',
+                        color: selectedColor === color ? 'white' : 'var(--color-body-text)',
+                        opacity: comboOk ? 1 : 0.45,
+                        textDecoration: comboOk ? 'none' : 'line-through',
+                      }}
+                    >
+                      {color}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', border: '1px solid var(--color-separator)' }}>
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ padding: '15px 20px' }}>-</button>
+              <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ padding: '15px 20px' }}>-</button>
               <input type="number" value={quantity} readOnly style={{ width: '50px', textAlign: 'center', border: 'none' }} />
-              <button onClick={() => setQuantity(quantity + 1)} style={{ padding: '15px 20px' }}>+</button>
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
+                style={{ padding: '15px 20px' }}
+                disabled={!inStock}
+              >
+                +
+              </button>
             </div>
-            <button className="btn btn-primary" onClick={handleAddToCart} disabled={adding} style={{ flex: 1, padding: '15px 30px' }}>
-              {adding ? 'Adding...' : 'Add to Cart'}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleAddToCart}
+              disabled={adding || !canAddToCart}
+              style={{
+                flex: 1,
+                padding: '15px 30px',
+                opacity: canAddToCart ? 1 : 0.55,
+                cursor: canAddToCart ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {adding ? 'Adding...' : (!inStock ? 'Out of Stock' : 'Add to Cart')}
             </button>
             <button
+              type="button"
               onClick={() => toggleWishlist(product)}
               style={{ fontSize: '28px', color: isInWishlist(product.id) ? 'var(--color-accent)' : 'var(--color-heading-text)' }}
             >
@@ -301,7 +316,7 @@ const ProductDetailPage = () => {
           </div>
 
           <div style={{ marginTop: '40px', borderTop: '1px solid var(--color-separator)', paddingTop: '20px', fontSize: '12px' }}>
-            <div><strong>SKU:</strong> {product.sku || product.id}</div>
+            <div><strong>SKU:</strong> {selectedVariant?.sku || product.sku || product.id}</div>
             <div style={{ marginTop: '8px' }}>
               <strong>Category:</strong>{' '}
               <Link to={`/shop?category=${encodeURIComponent(product.categorySlug || product.category)}`}>
@@ -317,40 +332,32 @@ const ProductDetailPage = () => {
           {['description', 'reviews'].map((tab) => (
             <button
               key={tab}
+              type="button"
               onClick={() => setActiveTab(tab)}
               style={{
-                padding: '15px 30px',
-                textTransform: 'uppercase',
+                padding: '12px 24px',
+                textTransform: 'capitalize',
                 borderBottom: activeTab === tab ? '2px solid var(--color-heading-text)' : '2px solid transparent',
+                fontWeight: activeTab === tab ? 600 : 400,
               }}
             >
-              {tab === 'reviews' ? `Reviews (${reviews.length})` : 'Description'}
+              {tab}
             </button>
           ))}
         </div>
-
         {activeTab === 'description' && (
-          <div style={{ maxWidth: '800px', lineHeight: 1.8 }}>
-            <p>{product.description}</p>
-          </div>
+          <p style={{ color: 'var(--color-body-text)', lineHeight: 1.8 }}>{product.description || 'No description.'}</p>
         )}
-
         {activeTab === 'reviews' && (
           <div>
             {reviews.length === 0 ? (
               <p style={{ color: 'var(--color-body-text)' }}>No reviews yet.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
-                {reviews.map((r) => (
-                  <div key={r.id} style={{ borderBottom: '1px solid var(--color-separator)', paddingBottom: '15px' }}>
-                    <strong>{r.title || 'Review'}</strong>
-                    <div style={{ fontSize: '13px', margin: '5px 0' }}>{'★'.repeat(r.rating || 0)}</div>
-                    <p style={{ color: 'var(--color-body-text)' }}>{r.body}</p>
-                  </div>
-                ))}
+            ) : reviews.map((r) => (
+              <div key={r.id} style={{ borderBottom: '1px solid var(--color-separator)', paddingBottom: '15px', marginBottom: 15 }}>
+                <strong>{r.title}</strong> — {r.rating}/5
+                <p style={{ color: 'var(--color-body-text)' }}>{r.body}</p>
               </div>
-            )}
-
+            ))}
             <form onSubmit={handleSubmitReview} style={{ maxWidth: '500px', marginTop: '20px' }}>
               <h4 style={{ marginBottom: '15px' }}>Write a Review</h4>
               {reviewError && <p style={{ color: '#c62828', marginBottom: '10px' }}>{reviewError}</p>}
@@ -387,11 +394,9 @@ const ProductDetailPage = () => {
 
       {related.length > 0 && (
         <div>
-          <h3 style={{ marginBottom: '30px' }}>Related Products</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-            {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+          <h3 style={{ marginBottom: 20 }}>You May Also Like</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
+            {related.map((r) => <ProductCard key={r.id} product={r} />)}
           </div>
         </div>
       )}

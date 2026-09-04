@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ABC Clothes">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" role="img" aria-label="ABC Clothes">
   <title>ABC Clothes</title>
-  <rect width="64" height="64" rx="12" fill="#212121"/>
-  <!-- Stylized ABC monogram -->
+  <rect x="0" y="0" width="64" height="64" rx="12" fill="#212121"/>
   <g fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- A -->
     <path d="M10 42 L16 22 L22 42"/>
     <path d="M12.5 34 H19.5"/>
-    <!-- B -->
     <path d="M27 22 V42"/>
     <path d="M27 22 H35 C38.5 22 40.5 24.2 40.5 27.2 C40.5 30 38.6 31.8 35.5 32.2"/>
     <path d="M27 32.2 H36 C39.6 32.2 41.8 34.4 41.8 37.4 C41.8 40.4 39.4 42 35.8 42 H27"/>
-    <!-- C -->
     <path d="M54 27.5 C52.2 23.8 48.6 22 44.5 22 C38.6 22 34.2 26.6 34.2 32.5 C34.2 38.4 38.6 43 44.5 43 C48.6 43 52.2 41.2 54 37.5"/>
   </g>
   <rect x="16" y="50" width="32" height="2.5" rx="1.25" fill="#00A8CA"/>
+  <g fill="#000000" font-family="Lato, 'Helvetica Neue', Arial, sans-serif" font-weight="300" letter-spacing="5">
+    <text x="84" y="38" font-size="22">ABC CLOTHES</text>
+  </g>
+  <rect x="84" y="46" width="56" height="1.5" fill="#00A8CA"/>
 </svg>

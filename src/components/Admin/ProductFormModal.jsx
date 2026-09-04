@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { productService } from '../../services/productService';
+import { inventoryService } from '../../services/inventoryService';
 import Select from '../UI/Select';
 import { parseVariantOptions } from '../../utils/productHelpers';
 
@@ -16,7 +17,8 @@ const formGroupStyle = { marginBottom: '15px' };
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' };
 
 const emptyVariant = () => ({
-  name: '', sku: '', price: '', compareAtPrice: '', size: '', color: '', position: 0, active: true,
+  name: '', sku: '', price: '', compareAtPrice: '', size: '', color: '',
+  position: 0, active: true, stockQty: '',
 });
 
 const slugPart = (value) => String(value || '')
@@ -45,33 +47,46 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
   useEffect(() => {
     if (!isOpen) return;
     if (productToEdit) {
-      const mappedVariants = (productToEdit.variants || []).map((v) => {
-        const opts = parseVariantOptions(v);
-        return {
-          id: v.id,
-          name: v.name || '',
-          sku: v.sku || '',
-          price: v.price || '',
-          compareAtPrice: v.compareAtPrice || '',
-          size: opts.size || '',
-          color: opts.color || '',
-          position: v.position || 0,
-          active: v.active !== false,
-        };
-      });
-      setFormData({
-        name: productToEdit.name || '',
-        slug: productToEdit.slug || '',
-        description: productToEdit.description || '',
-        categoryId: productToEdit.categoryId || '',
-        sku: productToEdit.sku || '',
-        price: productToEdit.price || productToEdit.basePrice || '',
-        compareAtPrice: productToEdit.compareAtPrice || '',
-        featured: productToEdit.featured || false,
-        currency: productToEdit.currency || 'LKR',
-        variants: mappedVariants.length ? mappedVariants : [emptyVariant()],
-        images: productToEdit.images || [],
-      });
+      const load = async () => {
+        const mappedVariants = await Promise.all((productToEdit.variants || []).map(async (v) => {
+          const opts = parseVariantOptions(v);
+          let stockQty = '';
+          if (v.id) {
+            try {
+              const snap = await inventoryService.getSnapshot(v.id);
+              stockQty = String(snap?.availableQty ?? snap?.available ?? 0);
+            } catch {
+              stockQty = '0';
+            }
+          }
+          return {
+            id: v.id,
+            name: v.name || '',
+            sku: v.sku || '',
+            price: v.price || '',
+            compareAtPrice: v.compareAtPrice || '',
+            size: opts.size || '',
+            color: opts.color || '',
+            position: v.position || 0,
+            active: v.active !== false,
+            stockQty,
+          };
+        }));
+        setFormData({
+          name: productToEdit.name || '',
+          slug: productToEdit.slug || '',
+          description: productToEdit.description || '',
+          categoryId: productToEdit.categoryId || '',
+          sku: productToEdit.sku || '',
+          price: productToEdit.price || productToEdit.basePrice || '',
+          compareAtPrice: productToEdit.compareAtPrice || '',
+          featured: productToEdit.featured || false,
+          currency: productToEdit.currency || 'LKR',
+          variants: mappedVariants.length ? mappedVariants : [emptyVariant()],
+          images: productToEdit.images || [],
+        });
+      };
+      load();
     } else {
       setFormData({
         name: '',
@@ -165,6 +180,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
           active: v.active !== false,
           size,
           color,
+          stockQty: v.stockQty === '' || v.stockQty == null ? undefined : Number(v.stockQty),
         };
       })
       .filter(Boolean);
@@ -252,15 +268,24 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
             <input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} /> Featured
           </label>
 
-          <h4 style={{ marginBottom: '6px' }}>Variants (Size / Color)</h4>
+          <h4 style={{ marginBottom: '6px' }}>Variants (Size / Color / Stock)</h4>
           <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
-            Each size/color combination becomes a selectable option on the product page for customers.
+            Each size/color combination becomes a selectable option on the product page.
+            Set stock quantity per variant — orders reduce stock automatically.
           </p>
           {formData.variants.map((v, index) => (
             <div key={index} style={{ border: '1px solid #eee', padding: '12px', marginBottom: '10px', borderRadius: '4px' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <input style={inputStyle} placeholder="Size (e.g. M, L, XL)" value={v.size} onChange={(e) => updateVariant(index, 'size', e.target.value)} />
                 <input style={inputStyle} placeholder="Color (e.g. Navy, Black)" value={v.color} onChange={(e) => updateVariant(index, 'color', e.target.value)} />
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  placeholder="Stock qty"
+                  value={v.stockQty}
+                  onChange={(e) => updateVariant(index, 'stockQty', e.target.value)}
+                />
               </div>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <input style={inputStyle} placeholder="Variant name" value={v.name} onChange={(e) => updateVariant(index, 'name', e.target.value)} />

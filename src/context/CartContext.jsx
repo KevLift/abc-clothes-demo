@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { cartService } from '../services/cartService';
 import { useAuth } from './AuthContext';
 import { findVariantId, mapCartToUiItems } from '../utils/productHelpers';
+import { findExactVariant } from '../utils/variantSelection';
 
 const CartContext = createContext();
 
@@ -40,7 +41,12 @@ export const CartProvider = ({ children }) => {
   }, [refreshCart]);
 
   const addToCart = async (product, size, color, quantity = 1) => {
-    const variantId = findVariantId(product.variants || [], size, color);
+    const variants = product.variants || [];
+    const exact = findExactVariant(variants, size, color);
+    const variantId = exact?.id || findVariantId(variants, size, color);
+    if (variants.length && !variantId) {
+      throw new Error('Please select an available size and color.');
+    }
     try {
       if (isCustomer) {
         let current = cart;

@@ -54,6 +54,7 @@ const ProductFilters = ({ filters, setFilters, maxPrice, categories = [] }) => {
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
+                    className="shop-filter-control"
                     checked={filters.category === cat.value || filters.category === cat.label}
                     onChange={() => handleCategoryChange(cat.value)}
                   />
@@ -71,11 +72,15 @@ const ProductFilters = ({ filters, setFilters, maxPrice, categories = [] }) => {
         </h4>
         <input
           type="range"
+          className="shop-filter-control shop-filter-range"
           min="0"
           max={maxPrice}
           value={Math.min(filters.priceRange, maxPrice)}
           onChange={(e) => setFilters((prev) => ({ ...prev, priceRange: Number(e.target.value) }))}
-          style={{ width: '100%' }}
+          style={{
+            width: '100%',
+            '--range-progress': `${maxPrice ? (Math.min(filters.priceRange, maxPrice) / maxPrice) * 100 : 100}%`,
+          }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '12px' }}>
           <span>0</span>

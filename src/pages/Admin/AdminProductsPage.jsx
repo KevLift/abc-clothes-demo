@@ -3,6 +3,7 @@ import { productService } from '../../services/productService';
 import { useCurrency } from '../../context/CurrencyContext';
 import ProductFormModal from '../../components/Admin/ProductFormModal';
 import Select from '../../components/UI/Select';
+import { saveVariantsWithStock } from '../../utils/saveVariantsWithStock';
 
 const AdminProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -72,33 +73,9 @@ const AdminProductsPage = () => {
 
       const productId = saved.id || productToEdit?.id;
       if (productId && variants?.length) {
-        const errors = [];
-        for (const v of variants) {
-          const variantBody = {
-            name: v.name,
-            sku: v.sku,
-            price: v.price,
-            ...(v.compareAtPrice != null ? { compareAtPrice: v.compareAtPrice } : {}),
-            currency: v.currency || raw.currency || 'LKR',
-            optionValues: typeof v.optionValues === 'string'
-              ? v.optionValues
-              : JSON.stringify(v.optionValues || {}),
-            position: v.position ?? 0,
-            active: v.active !== false,
-          };
-          try {
-            if (v.id) {
-              await productService.updateVariant(productId, v.id, variantBody);
-            } else {
-              await productService.createVariant(productId, variantBody);
-            }
-          } catch (err) {
-            console.error('Variant save failed', err);
-            errors.push(err.response?.data?.message || `${v.name || v.sku}: failed`);
-          }
-        }
+        const errors = await saveVariantsWithStock(productId, variants, raw.currency || 'LKR');
         if (errors.length) {
-          alert(`Product saved, but some variants failed:\n${errors.join('\n')}`);
+          alert(`Product saved, but some variants/stock failed:\n${errors.join('\n')}`);
         }
       }
 

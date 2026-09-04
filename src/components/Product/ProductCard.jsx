@@ -9,6 +9,7 @@ import { FaHeart, FaRegHeart, FaEye, FaShoppingBag, FaEdit } from 'react-icons/f
 import ProductQuickView from './ProductQuickView';
 import ProductFormModal from '../Admin/ProductFormModal';
 import { productService } from '../../services/productService';
+import { saveVariantsWithStock } from '../../utils/saveVariantsWithStock';
 
 const ProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -63,22 +64,8 @@ const ProductCard = ({ product }) => {
       await productService.updateProduct(product.id, productPayload);
 
       if (variants?.length) {
-        for (const v of variants) {
-          const variantBody = {
-            name: v.name,
-            sku: v.sku,
-            price: v.price,
-            ...(v.compareAtPrice != null ? { compareAtPrice: v.compareAtPrice } : {}),
-            currency: v.currency || raw.currency || 'LKR',
-            optionValues: typeof v.optionValues === 'string'
-              ? v.optionValues
-              : JSON.stringify(v.optionValues || {}),
-            position: v.position ?? 0,
-            active: v.active !== false,
-          };
-          if (v.id) await productService.updateVariant(product.id, v.id, variantBody);
-          else await productService.createVariant(product.id, variantBody);
-        }
+        const errors = await saveVariantsWithStock(product.id, variants, raw.currency || 'LKR');
+        if (errors.length) alert(`Saved with some stock errors:\n${errors.join('\n')}`);
       }
 
       setIsEditModalOpen(false);

@@ -8,7 +8,10 @@ export const inventoryService = {
 
   getBulkAvailability: async (variantIds) => {
     const response = await api.post('/inventory/availability/bulk', { variantIds });
-    return unwrap(response.data) || response.data;
+    const data = unwrap(response.data) || response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    return [];
   },
 
   getSnapshot: async (variantId) => {
@@ -24,5 +27,26 @@ export const inventoryService = {
   getLowStock: async (params = {}) => {
     const response = await api.get('/inventory/admin/low-stock', { params });
     return unwrapPage(response.data);
+  },
+
+  /** Set absolute available qty via replenish / write-down delta. */
+  setAvailableQty: async (variantId, targetQty, reason = 'Admin set stock level') => {
+    let current = 0;
+    try {
+      const snap = await inventoryService.getSnapshot(variantId);
+      current = Number(snap?.availableQty ?? snap?.available ?? 0);
+    } catch {
+      current = 0;
+    }
+    const target = Math.max(0, Number(targetQty) || 0);
+    const diff = target - current;
+    if (diff === 0) return { availableQty: current };
+    await inventoryService.adjustStock({
+      variantId,
+      adjustmentType: diff > 0 ? 'REPLENISH' : 'WRITE_DOWN',
+      quantity: Math.abs(diff),
+      reason,
+    });
+    return { availableQty: target };
   },
 };
