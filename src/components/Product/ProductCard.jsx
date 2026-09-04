@@ -80,14 +80,21 @@ const ProductCard = ({ product }) => {
           )}
           
           <img 
-            src={product.images?.[0] || product.image || 'https://via.placeholder.com/400x500?text=No+Image'} 
-            alt={product.name} 
+            src={product.images?.[0] || product.primaryImageUrl || product.image || '/images/product-placeholder.svg'} 
+            alt={product.name}
+            loading="lazy"
+            onError={(e) => {
+              if (e.currentTarget.dataset.fallback === '1') return;
+              e.currentTarget.dataset.fallback = '1';
+              e.currentTarget.src = '/images/product-placeholder.svg';
+            }}
             style={{ 
               width: '100%', 
               height: '400px', 
               objectFit: 'cover',
               transition: 'transform var(--transition-slow)',
-              transform: isHovered ? 'scale(1.05)' : 'scale(1)'
+              transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+              backgroundColor: 'var(--color-light-bg)',
             }} 
           />
           

@@ -57,18 +57,19 @@ export const normalizeProduct = (p) => {
   if (!p) return null;
   const variants = p.variants || [];
   const { sizes, colors } = extractSizesAndColors(variants);
-  const images = Array.isArray(p.images)
+  const fromImages = Array.isArray(p.images)
     ? p.images.map((img) => (typeof img === 'string' ? img : img?.url)).filter(Boolean)
-    : p.image
-      ? [p.image]
-      : [];
+    : [];
+  const primary = p.primaryImageUrl || p.imageUrl || fromImages[0] || p.image || '';
+  const images = fromImages.length ? fromImages : (primary ? [primary] : []);
   return {
     ...p,
     price: Number(p.price ?? p.basePrice ?? 0),
     salePrice: p.compareAtPrice ? Number(p.price ?? p.basePrice ?? 0) : (p.salePrice ? Number(p.salePrice) : null),
     compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
     images,
-    image: images[0] || p.image || '',
+    image: primary,
+    primaryImageUrl: primary,
     sizes: sizes.length ? sizes : p.sizes || [],
     colors: colors.length ? colors : p.colors || [],
     variants,

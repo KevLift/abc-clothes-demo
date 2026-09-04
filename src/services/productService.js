@@ -2,6 +2,11 @@ import api, { unwrap, unwrapList, unwrapPage } from './api';
 
 const mapProduct = (p) => {
   if (!p) return null;
+  const imageList = (p.images || [])
+    .map((img) => (typeof img === 'string' ? img : img?.url))
+    .filter(Boolean);
+  const primary = p.primaryImageUrl || p.imageUrl || imageList[0] || p.image || '';
+  const images = imageList.length ? imageList : (primary ? [primary] : []);
   return {
     ...p,
     id: p.id,
@@ -16,8 +21,9 @@ const mapProduct = (p) => {
     categoryName: p.categoryName || p.category || '',
     categorySlug: p.categorySlug,
     categoryId: p.categoryId,
-    image: p.images?.[0]?.url || p.primaryImageUrl || p.imageUrl || p.image || '',
-    images: (p.images || []).map((img) => (typeof img === 'string' ? img : img.url)).filter(Boolean),
+    primaryImageUrl: primary,
+    image: primary,
+    images,
     variants: p.variants || [],
     sku: p.sku,
     status: p.status,

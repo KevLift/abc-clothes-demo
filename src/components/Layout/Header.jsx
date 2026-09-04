@@ -76,7 +76,7 @@ const Header = () => {
           width: '100%',
           zIndex: 1000,
           backgroundColor: isHeaderSolid ? 'rgba(255,255,255,0.97)' : 'transparent',
-          boxShadow: isHeaderSolid ? '0 2px 20px rgba(0,0,0,0.08)' : 'none',
+          boxShadow: 'none',
           transition: 'all 0.3s ease, transform 0.3s ease',
           transform: isScrolling ? 'translateY(-100%)' : 'translateY(0)',
         }}
