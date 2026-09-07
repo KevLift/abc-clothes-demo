@@ -1,4 +1,5 @@
 export const STORE_ROLES = ['STORE_OWNER', 'STORE_MEMBER'];
+export const PLATFORM_ROLES = ['PLATFORM_ADMIN', 'PLATFORM_SUPPORT'];
 
 export const isStoreAdmin = (user) => {
   if (!user?.role) return false;
@@ -6,6 +7,11 @@ export const isStoreAdmin = (user) => {
 };
 
 export const isStoreOwner = (user) => user?.role === 'STORE_OWNER';
+
+export const isPlatformOperator = (user) => {
+  if (!user?.role) return false;
+  return PLATFORM_ROLES.includes(user.role);
+};
 
 export const hasPermission = (user, permission) => {
   if (!user) return false;
@@ -16,3 +22,6 @@ export const hasPermission = (user, permission) => {
 };
 
 export const canAccessAdmin = (user) => isStoreAdmin(user);
+
+/** Who may load the /admin shell at all — store team plus platform operators. */
+export const canAccessAdminShell = (user) => isStoreAdmin(user) || isPlatformOperator(user);

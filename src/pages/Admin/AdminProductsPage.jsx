@@ -62,6 +62,7 @@ const AdminProductsPage = () => {
             ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
             currency: raw.currency,
             featured: !!raw.featured,
+            ...(raw.socialPublishing ? { socialPublishing: raw.socialPublishing } : {}),
           };
 
       let saved;

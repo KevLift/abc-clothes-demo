@@ -15,7 +15,7 @@ const inputStyle = {
 };
 
 const AccountPage = () => {
-  const { user, isAuthenticated, login, register, logout, updateUserLocal } = useAuth();
+  const { user, isAuthenticated, login, register, logout, logoutAllDevices, updateUserLocal } = useAuth();
   const [isLoginView, setIsLoginView] = useState(true);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [registerData, setRegisterData] = useState({ name: '', email: '', password: '' });
@@ -183,6 +183,16 @@ const AccountPage = () => {
                 <Link to="/admin" className="btn btn-primary">Admin Dashboard</Link>
               )}
               <button onClick={logout} className="btn btn-outline">Logout</button>
+              <button
+                onClick={async () => {
+                  await logoutAllDevices();
+                  setMessage('Signed out of all devices');
+                }}
+                className="btn btn-outline"
+                title="Revoke every active session for this account"
+              >
+                Sign Out All Devices
+              </button>
             </div>
           </div>
 

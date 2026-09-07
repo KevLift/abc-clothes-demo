@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { canAccessAdmin, hasPermission } from '../../utils/roles';
+import { canAccessAdminShell, hasPermission } from '../../utils/roles';
 
 const ProtectedRoute = ({ adminOnly = false, permission = null }) => {
   const { user, isAuthenticated } = useAuth();
@@ -10,7 +10,7 @@ const ProtectedRoute = ({ adminOnly = false, permission = null }) => {
     return <Navigate to="/account" replace />;
   }
 
-  if (adminOnly && !canAccessAdmin(user)) {
+  if (adminOnly && !canAccessAdminShell(user)) {
     return <Navigate to="/" replace />;
   }
 

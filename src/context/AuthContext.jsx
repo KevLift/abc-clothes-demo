@@ -67,6 +67,15 @@ export const AuthProvider = ({ children }) => {
     await authService.logout(refreshToken);
   };
 
+  const logoutAllDevices = async () => {
+    try {
+      await authService.logoutAll();
+    } finally {
+      setUser(null);
+      setStoredUser(null);
+    }
+  };
+
   const updateUserLocal = (partial) => {
     setUser((prev) => {
       if (!prev) return prev;
@@ -86,6 +95,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        logoutAllDevices,
         updateUserLocal,
       }}
     >

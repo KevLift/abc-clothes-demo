@@ -6,6 +6,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { orderService } from '../services/orderService';
 import { paymentService } from '../services/paymentService';
 import { authService } from '../services/authService';
+import { inventoryService } from '../services/inventoryService';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -20,7 +21,34 @@ const inputStyle = {
   fontSize: '14px',
 };
 
-const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTotal, cartId, onSuccess, currency }) => {
+/**
+ * Best-effort stock reservation around the order. Every call is idempotent
+ * server-side and must never block checkout — failures are logged only.
+ */
+const reservableItems = (items) =>
+  (items || []).filter((i) => i.variantId && i.quantity > 0);
+
+const reserveForOrder = async (items, referenceId) => {
+  await Promise.allSettled(
+    reservableItems(items).map((i) =>
+      inventoryService.reserve({
+        variantId: i.variantId,
+        referenceId,
+        quantity: i.quantity,
+      }),
+    ),
+  );
+};
+
+const settleReservations = async (items, referenceId, action) => {
+  await Promise.allSettled(
+    reservableItems(items).map((i) =>
+      inventoryService[action]({ variantId: i.variantId, referenceId }),
+    ),
+  );
+};
+
+const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTotal, cartId, cartItems, onSuccess, currency }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +87,9 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
         notes: formData.notes || null,
       });
 
+      // Hold stock against this order while payment is attempted.
+      await reserveForOrder(cartItems, order.id);
+
       if (stripe && elements && stripeKey) {
         const card = elements.getElement(CardElement);
         const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
@@ -73,6 +104,7 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
 
         if (pmError) {
           setOrderError(pmError.message || 'Card error');
+          await settleReservations(cartItems, order.id, 'release');
           onSuccess(order, false);
           return;
         }
@@ -91,13 +123,17 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
             const { error: confirmError } = await stripe.confirmCardPayment(payment.clientSecret);
             if (confirmError) {
               setOrderError(confirmError.message || 'Payment confirmation failed');
+              await settleReservations(cartItems, order.id, 'release');
               onSuccess(order, false);
               return;
             }
           }
+          // Payment went through — turn the hold into a permanent deduction.
+          await settleReservations(cartItems, order.id, 'confirm');
           onSuccess(order, true);
         } catch (payErr) {
           console.warn('Payment initiation failed, order created unpaid', payErr);
+          await settleReservations(cartItems, order.id, 'release');
           onSuccess(order, false);
         }
       } else {
@@ -301,6 +337,7 @@ const CheckoutPage = () => {
     finalTotal: formatPrice(finalTotal),
     cartTotal,
     cartId,
+    cartItems,
     onSuccess,
     currency: 'LKR',
   };

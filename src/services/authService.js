@@ -45,6 +45,14 @@ export const authService = {
     }
   },
 
+  logoutAll: async () => {
+    try {
+      await api.post('/auth/logout-all');
+    } catch {
+      // ignore logout failures
+    }
+  },
+
   forgotPassword: async (email) => {
     const response = await api.post('/auth/forgot-password', { email });
     return unwrap(response.data);

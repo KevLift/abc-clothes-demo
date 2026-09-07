@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { hasPermission, isStoreOwner } from '../../utils/roles';
+import { hasPermission, isStoreOwner, isPlatformOperator } from '../../utils/roles';
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -37,9 +37,16 @@ const AdminLayout = () => {
     { name: 'Inquiries', path: '/admin/inquiries', permission: 'customers:view' },
     { name: 'Settings', path: '/admin/settings', permission: 'settings:view' },
     { name: 'Social', path: '/admin/social', permission: 'settings:manage' },
+    { name: 'Platform', path: '/admin/platform', platformRoles: ['PLATFORM_ADMIN', 'PLATFORM_SUPPORT'] },
+    { name: 'Admin Config', path: '/admin/config', platformRoles: ['PLATFORM_ADMIN'] },
   ];
 
+  const platformOperator = isPlatformOperator(user);
+
   const navItems = allNav.filter((item) => {
+    // Platform operators only ever see the platform-scoped items.
+    if (platformOperator) return Boolean(item.platformRoles?.includes(user?.role));
+    if (item.platformRoles) return false;
     if (item.ownerOnly) return isStoreOwner(user);
     if (!item.permission) return true;
     return hasPermission(user, item.permission);

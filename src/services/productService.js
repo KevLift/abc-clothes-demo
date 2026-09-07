@@ -93,6 +93,11 @@ export const productService = {
     return unwrap(response.data) || response.data;
   },
 
+  getCategoryBySlug: async (slug) => {
+    const response = await api.get(`/categories/slug/${encodeURIComponent(slug)}`);
+    return unwrap(response.data) || response.data;
+  },
+
   getCategoryChildren: async (id) => {
     const response = await api.get(`/categories/${id}/children`);
     const data = unwrap(response.data) || response.data;

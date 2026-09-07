@@ -15,6 +15,7 @@ const ShopPage = () => {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [resolvedCategory, setResolvedCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -37,21 +38,37 @@ const ShopPage = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const [cats, productResult] = await Promise.all([
+        const categorySlug = filters.category
+          ? filters.category.toLowerCase().replace(/\s+/g, '-')
+          : '';
+
+        // Resolve the slug to a real category so we can filter by id and
+        // show its canonical name in the heading / breadcrumb.
+        const categoryPromise = categorySlug
+          ? productService.getCategoryBySlug(categorySlug).catch(() => null)
+          : Promise.resolve(null);
+
+        const [cats, category] = await Promise.all([
           productService.getCategories().catch(() => []),
+          categoryPromise,
+        ]);
+        setResolvedCategory(category);
+
+        const productResult = await (
           searchQuery
             ? productService.searchProducts(searchQuery).then((list) => ({ content: list }))
             : filters.category
               ? productService.getProducts({
                   page: 0,
                   size: 100,
-                  categorySlug: filters.category.toLowerCase().replace(/\s+/g, '-'),
+                  categorySlug,
+                  ...(category?.id ? { categoryId: category.id } : {}),
                 }).catch(async () => {
                   // fallback: fetch all and filter client-side by name
                   return productService.getProducts({ page: 0, size: 100 });
                 })
-              : productService.getProducts({ page: 0, size: 100 }),
-        ]);
+              : productService.getProducts({ page: 0, size: 100 })
+        );
         setCategories(Array.isArray(cats) ? cats : []);
         const mapped = (productResult.content || []).map(normalizeProduct);
         setProducts(mapped);
@@ -142,7 +159,7 @@ const ShopPage = () => {
       <Breadcrumb />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-        <h2>{searchQuery ? `Search Results for "${searchQuery}"` : (filters.category || 'All Products')}</h2>
+        <h2>{searchQuery ? `Search Results for "${searchQuery}"` : (resolvedCategory?.name || filters.category || 'All Products')}</h2>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ fontSize: '12px', color: 'var(--color-body-text)' }}>

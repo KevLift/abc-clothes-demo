@@ -29,6 +29,28 @@ export const inventoryService = {
     return unwrapPage(response.data);
   },
 
+  // ── Checkout stock reservations (customer flow) ──────────────────────────
+  /** Hold stock for a checkout attempt. referenceId = cartId or orderId. */
+  reserve: async ({ variantId, referenceId, quantity, ttlMinutes }) => {
+    const response = await api.post('/inventory/reservations/reserve', {
+      variantId,
+      referenceId,
+      quantity,
+      ...(ttlMinutes ? { ttlMinutes } : {}),
+    });
+    return unwrap(response.data) || response.data;
+  },
+
+  /** Return a held reservation to available stock (checkout abandoned / failed). */
+  release: async ({ variantId, referenceId }) => {
+    await api.post('/inventory/reservations/release', { variantId, referenceId });
+  },
+
+  /** Permanently deduct a reservation after successful payment. */
+  confirm: async ({ variantId, referenceId }) => {
+    await api.post('/inventory/reservations/confirm', { variantId, referenceId });
+  },
+
   /** Set absolute available qty via replenish / write-down delta. */
   setAvailableQty: async (variantId, targetQty, reason = 'Admin set stock level') => {
     let current = 0;

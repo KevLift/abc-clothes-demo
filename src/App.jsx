@@ -39,6 +39,8 @@ import AdminTeamPage from './pages/Admin/AdminTeamPage';
 import AdminNotificationsPage from './pages/Admin/AdminNotificationsPage';
 import AdminInquiriesPage from './pages/Admin/AdminInquiriesPage';
 import AdminSocialPage from './pages/Admin/AdminSocialPage';
+import AdminPlatformPage from './pages/Admin/AdminPlatformPage';
+import AdminConfigPage from './pages/Admin/AdminConfigPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
@@ -89,6 +91,8 @@ function App() {
                           <Route path="analytics" element={<AdminAnalyticsPage />} />
                           <Route path="inquiries" element={<AdminInquiriesPage />} />
                           <Route path="social" element={<AdminSocialPage />} />
+                          <Route path="platform" element={<AdminPlatformPage />} />
+                          <Route path="config" element={<AdminConfigPage />} />
                           <Route path="users" element={<AdminCustomersPage />} />
                         </Route>
                       </Route>

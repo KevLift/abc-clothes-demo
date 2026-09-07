@@ -37,4 +37,20 @@ export const notificationService = {
     const response = await api.post(`/notifications/${id}/retry`);
     return unwrap(response.data) || response.data;
   },
+
+  /** Store-owner: every notification sent to a given user. */
+  getByUser: async (userId) => {
+    const response = await api.get(`/notifications/user/${encodeURIComponent(userId)}`);
+    const data = unwrap(response.data) || response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  /** Store-owner: notifications tied to a domain object, e.g. ORDER / <orderId>. */
+  getByReference: async (referenceType, referenceId) => {
+    const response = await api.get(
+      `/notifications/reference/${encodeURIComponent(referenceType)}/${encodeURIComponent(referenceId)}`,
+    );
+    const data = unwrap(response.data) || response.data;
+    return Array.isArray(data) ? data : [];
+  },
 };

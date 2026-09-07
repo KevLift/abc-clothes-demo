@@ -35,6 +35,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
     name: '', slug: '', description: '', categoryId: '', sku: '',
     price: '', compareAtPrice: '', featured: false, currency: 'LKR',
     variants: [emptyVariant()], images: [],
+    socialEnabled: false, socialDescription: '',
   });
 
   useEffect(() => {
@@ -84,6 +85,8 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
           currency: productToEdit.currency || 'LKR',
           variants: mappedVariants.length ? mappedVariants : [emptyVariant()],
           images: productToEdit.images || [],
+          socialEnabled: false,
+          socialDescription: '',
         });
       };
       load();
@@ -100,6 +103,8 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
         currency: 'LKR',
         variants: [emptyVariant()],
         images: [],
+        socialEnabled: false,
+        socialDescription: '',
       });
     }
   }, [productToEdit, isOpen, categories]);
@@ -201,6 +206,15 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
       payload.compareAtPrice = parseFloat(formData.compareAtPrice);
     }
 
+    // Social publishing is only honoured on create (the backend ignores it on update).
+    if (!productToEdit && formData.socialEnabled) {
+      payload.socialPublishing = {
+        enabled: true,
+        description: (formData.socialDescription || '').trim(),
+        platforms: ['FACEBOOK'],
+      };
+    }
+
     onSave(payload);
   };
 
@@ -267,6 +281,37 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
             <input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} /> Featured
           </label>
+
+          {!productToEdit && (
+            <div style={{ border: '1px solid #eee', borderRadius: '4px', padding: '12px', marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  name="socialEnabled"
+                  checked={formData.socialEnabled}
+                  onChange={handleChange}
+                />
+                Publish to Facebook when this product goes live
+              </label>
+              {formData.socialEnabled && (
+                <>
+                  <p style={{ fontSize: 12, color: '#666', margin: '8px 0' }}>
+                    Posts to every connected Facebook Page the moment you click
+                    &ldquo;Publish&rdquo; on this product. Connect a Page first under
+                    Admin &rarr; Social.
+                  </p>
+                  <textarea
+                    style={inputStyle}
+                    name="socialDescription"
+                    value={formData.socialDescription}
+                    onChange={handleChange}
+                    rows="2"
+                    placeholder="Optional caption (leave blank to auto-generate from the product)"
+                  />
+                </>
+              )}
+            </div>
+          )}
 
           <h4 style={{ marginBottom: '6px' }}>Variants (Size / Color / Stock)</h4>
           <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
