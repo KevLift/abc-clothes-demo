@@ -125,6 +125,7 @@ const ProductDetailPage = () => {
         ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
         currency: raw.currency,
         featured: raw.featured,
+        ...(raw.attributes ? { attributes: raw.attributes } : {}),
       });
       if (variants?.length) {
         const errors = await saveVariantsWithStock(product.id, variants, raw.currency || 'LKR');
@@ -196,12 +197,12 @@ const ProductDetailPage = () => {
             {compareAtPrice ? (
               <>
                 <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '15px' }}>
-                  {formatPrice(compareAtPrice)}
+                  {formatPrice(compareAtPrice, product.currency)}
                 </span>
-                <span>{formatPrice(price)}</span>
+                <span>{formatPrice(price, product.currency)}</span>
               </>
             ) : (
-              <span>{formatPrice(price)}</span>
+              <span>{formatPrice(price, product.currency)}</span>
             )}
           </div>
 
@@ -329,7 +330,7 @@ const ProductDetailPage = () => {
 
       <div style={{ marginBottom: '60px' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--color-separator)', marginBottom: '30px' }}>
-          {['description', 'reviews'].map((tab) => (
+          {['description', ...(product.attributes?.length ? ['specifications'] : []), 'reviews'].map((tab) => (
             <button
               key={tab}
               type="button"
@@ -347,6 +348,26 @@ const ProductDetailPage = () => {
         </div>
         {activeTab === 'description' && (
           <p style={{ color: 'var(--color-body-text)', lineHeight: 1.8 }}>{product.description || 'No description.'}</p>
+        )}
+        {activeTab === 'specifications' && (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              {(product.attributes || []).map((attr) => (
+                <tr key={attr.attributeId} style={{ borderBottom: '1px solid var(--color-separator)' }}>
+                  <td style={{ padding: '10px 0', width: '35%', color: 'var(--color-body-text)', fontWeight: 600 }}>{attr.label}</td>
+                  <td style={{ padding: '10px 0' }}>
+                    {attr.type === 'BOOLEAN'
+                      ? (attr.valueBoolean ? 'Yes' : 'No')
+                      : attr.type === 'SELECT'
+                        ? (attr.optionLabel || attr.optionValue)
+                        : attr.type === 'NUMBER'
+                          ? attr.valueNumber
+                          : attr.valueText}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
         {activeTab === 'reviews' && (
           <div>

@@ -109,11 +109,9 @@ const Header = () => {
                 Admin Dashboard
               </Link>
             )}
-            <Link to="/account" style={{ color: 'rgba(255,255,255,0.85)' }}>Account</Link>
-            <Link to="/wishlist" style={{ color: 'rgba(255,255,255,0.85)' }}>Wishlist</Link>
-            <Link to="/cart" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              Shopping Bag ({cartCount})
-            </Link>
+            {/* Account / Wishlist / Shopping Bag are already represented as icons in the
+                main nav row below on every page — keep this row to currency + admin + search
+                only so they don't render twice when the header is transparent. */}
             <button onClick={openSearch} style={{ color: 'rgba(255,255,255,0.85)', padding: 0 }}>
               <FaSearch size={12} />
             </button>

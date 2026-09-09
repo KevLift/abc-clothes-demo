@@ -57,7 +57,7 @@ const WishlistPage = () => {
               />
               <h3 style={{ fontSize: '14px', marginBottom: '5px' }}>{product.name}</h3>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: '16px', marginBottom: '15px' }}>
-                {formatPrice(product.salePrice || product.price)}
+                {formatPrice(product.salePrice || product.price, product.currency)}
               </div>
             </Link>
             <button

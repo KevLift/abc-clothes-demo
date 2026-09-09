@@ -51,17 +51,19 @@ const AdminProductsPage = () => {
             ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
             currency: raw.currency,
             featured: raw.featured,
+            ...(raw.attributes ? { attributes: raw.attributes } : {}),
           }
         : {
             name: raw.name,
             slug: raw.slug,
             description: raw.description,
             categoryId: raw.categoryId,
-            sku: raw.sku,
+            ...(raw.sku ? { sku: raw.sku } : {}),
             price: raw.price,
             ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
             currency: raw.currency,
             featured: !!raw.featured,
+            ...(raw.attributes ? { attributes: raw.attributes } : {}),
             ...(raw.socialPublishing ? { socialPublishing: raw.socialPublishing } : {}),
           };
 
@@ -77,6 +79,20 @@ const AdminProductsPage = () => {
         const errors = await saveVariantsWithStock(productId, variants, raw.currency || 'LKR');
         if (errors.length) {
           alert(`Product saved, but some variants/stock failed:\n${errors.join('\n')}`);
+        }
+      }
+
+      // Images picked before the product existed (create flow) — upload in order so
+      // the first one becomes the cover image, as shown in the form.
+      if (productId && raw.pendingImageFiles?.length) {
+        for (const file of raw.pendingImageFiles) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await productService.uploadImage(productId, file);
+          } catch (err) {
+            console.error('Image upload failed', err);
+            alert('Product saved, but one or more images failed to upload.');
+          }
         }
       }
 
@@ -170,7 +186,7 @@ const AdminProductsPage = () => {
                   <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '12px' }}>{p.name}</td>
                     <td style={{ padding: '12px' }}>{p.sku}</td>
-                    <td style={{ padding: '12px' }}>{formatPrice(p.price)}</td>
+                    <td style={{ padding: '12px' }}>{formatPrice(p.price, p.currency)}</td>
                     <td style={{ padding: '12px' }}>{p.status || '—'}</td>
                     <td style={{ padding: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <button onClick={() => openEdit(p)} style={{ color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>

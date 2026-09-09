@@ -223,4 +223,13 @@ export const productService = {
   deleteImage: async (productId, imageId) => {
     await api.delete(`/products/${productId}/images/${imageId}`);
   },
+
+  setPrimaryImage: async (productId, imageId) => {
+    const response = await api.patch(`/products/${productId}/images/${imageId}/primary`);
+    return unwrap(response.data) || response.data;
+  },
+
+  reorderImages: async (productId, orderedImageIds) => {
+    await api.put(`/products/${productId}/images/reorder`, orderedImageIds);
+  },
 };

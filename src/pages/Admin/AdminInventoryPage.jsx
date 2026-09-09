@@ -15,6 +15,12 @@ const AdminInventoryPage = () => {
   const [message, setMessage] = useState('');
   const [loadingVariants, setLoadingVariants] = useState(false);
 
+  const [allInventory, setAllInventory] = useState([]);
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryPage, setInventoryPage] = useState(0);
+  const [inventoryTotalPages, setInventoryTotalPages] = useState(1);
+  const [loadingInventory, setLoadingInventory] = useState(true);
+
   const load = async () => {
     const [low, adminProducts] = await Promise.all([
       inventoryService.getLowStock({ page: 0, size: 50, threshold: 5 }).catch(() => ({ content: [] })),
@@ -24,7 +30,37 @@ const AdminInventoryPage = () => {
     setProducts(adminProducts.content || []);
   };
 
+  const loadAllInventory = async () => {
+    setLoadingInventory(true);
+    try {
+      const page = await inventoryService.getAllInventory({
+        page: inventoryPage,
+        size: 20,
+        ...(inventorySearch ? { search: inventorySearch } : {}),
+      });
+      setAllInventory(page.content || []);
+      setInventoryTotalPages(page.totalPages || 1);
+    } catch {
+      setAllInventory([]);
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadAllInventory(); }, [inventoryPage]);
+
+  const quickAdjust = async (item, targetQty) => {
+    try {
+      await inventoryService.setAvailableQty(item.variantId, targetQty, 'Admin inventory overview');
+      setAllInventory((prev) => prev.map((row) => (
+        row.variantId === item.variantId ? { ...row, availableQty: Number(targetQty) } : row
+      )));
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update stock');
+    }
+  };
 
   useEffect(() => {
     if (!selectedProductId) {
@@ -175,6 +211,78 @@ const AdminInventoryPage = () => {
               </button>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div style={{ background: 'white', padding: 20, borderRadius: 8, marginTop: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, flexWrap: 'wrap', gap: 10 }}>
+          <h3>All Inventory</h3>
+          <form
+            onSubmit={(e) => { e.preventDefault(); setInventoryPage(0); loadAllInventory(); }}
+            style={{ display: 'flex', gap: 8 }}
+          >
+            <input
+              placeholder="Search by product or SKU"
+              value={inventorySearch}
+              onChange={(e) => setInventorySearch(e.target.value)}
+              style={{ padding: 8, minWidth: 220 }}
+            />
+            <button type="submit" className="btn btn-outline">Search</button>
+          </form>
+        </div>
+
+        {loadingInventory ? <p>Loading inventory...</p> : allInventory.length === 0 ? (
+          <p style={{ color: '#888' }}>No inventory records found.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ background: '#f8f9fa' }}>
+              <tr>
+                <th style={{ padding: 10, textAlign: 'left' }}>Product</th>
+                <th style={{ padding: 10, textAlign: 'left' }}>Variant</th>
+                <th style={{ padding: 10, textAlign: 'left' }}>SKU</th>
+                <th style={{ padding: 10, textAlign: 'left' }}>Available</th>
+                <th style={{ padding: 10, textAlign: 'left' }}>Reserved</th>
+                <th style={{ padding: 10, textAlign: 'left' }}>Status</th>
+                <th style={{ padding: 10, textAlign: 'left' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {allInventory.map((item) => (
+                <tr key={item.variantId} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: 10 }}>{item.productName}</td>
+                  <td style={{ padding: 10 }}>{item.variantName}</td>
+                  <td style={{ padding: 10 }}>{item.sku}</td>
+                  <td style={{ padding: 10 }}>{item.availableQty}</td>
+                  <td style={{ padding: 10 }}>{item.reservedQty}</td>
+                  <td style={{ padding: 10 }}>
+                    {item.availableQty === 0
+                      ? <span style={{ color: '#e74c3c' }}>Out of stock</span>
+                      : item.availableQty <= 5
+                        ? <span style={{ color: '#e67e22' }}>Low</span>
+                        : <span style={{ color: '#27ae60' }}>In stock</span>}
+                  </td>
+                  <td style={{ padding: 10 }}>
+                    <button
+                      type="button"
+                      style={{ color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }}
+                      onClick={() => {
+                        const next = window.prompt(`Set available quantity for ${item.variantName}`, item.availableQty);
+                        if (next !== null && !Number.isNaN(Number(next))) quickAdjust(item, Number(next));
+                      }}
+                    >
+                      Adjust
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 15, alignItems: 'center' }}>
+          <button disabled={inventoryPage <= 0} onClick={() => setInventoryPage((p) => p - 1)}>Prev</button>
+          <span>Page {inventoryPage + 1} / {inventoryTotalPages}</span>
+          <button disabled={inventoryPage + 1 >= inventoryTotalPages} onClick={() => setInventoryPage((p) => p + 1)}>Next</button>
         </div>
       </div>
     </div>

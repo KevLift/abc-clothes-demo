@@ -32,6 +32,7 @@ const AdminLayout = () => {
     { name: 'Customers', path: '/admin/customers', permission: 'customers:view' },
     { name: 'Team', path: '/admin/team', ownerOnly: true },
     { name: 'Reviews', path: '/admin/reviews', permission: 'products:update' },
+    { name: 'Wishlist', path: '/admin/wishlist', permission: 'products:view' },
     { name: 'Analytics', path: '/admin/analytics', permission: 'analytics:view' },
     { name: 'Notifications', path: '/admin/notifications', ownerOnly: true },
     { name: 'Inquiries', path: '/admin/inquiries', permission: 'customers:view' },

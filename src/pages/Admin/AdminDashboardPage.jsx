@@ -38,10 +38,15 @@ const AdminDashboardPage = () => {
   if (loading) return <div>Loading dashboard...</div>;
   if (!stats && !analytics) return <div>Failed to load stats.</div>;
 
+  const todayCards = [
+    { title: "Today's Orders", value: stats?.todayOrders ?? '—' },
+    { title: "Today's Revenue", value: stats?.todayRevenue != null ? formatPrice(stats.todayRevenue) : '—' },
+  ];
+
   const statCards = [
-    { title: 'Revenue (30d)', value: analytics?.totalRevenue != null ? formatPrice(analytics.totalRevenue) : '—' },
+    { title: 'Revenue (30d)', value: analytics?.totalRevenue != null ? formatPrice(analytics.totalRevenue, analytics.currency) : '—' },
     { title: 'Orders (30d)', value: analytics?.orderCount ?? analytics?.totalOrders ?? '—' },
-    { title: 'AOV', value: analytics?.averageOrderValue != null ? formatPrice(analytics.averageOrderValue) : '—' },
+    { title: 'AOV', value: analytics?.averageOrderValue != null ? formatPrice(analytics.averageOrderValue, analytics.currency) : '—' },
     { title: 'Total Products', value: stats?.totalProducts ?? '—' },
     { title: 'Total Orders', value: stats?.totalOrders ?? '—' },
     { title: 'Low Stock', value: stats?.lowStockCount ?? '—' },
@@ -51,7 +56,29 @@ const AdminDashboardPage = () => {
 
   return (
     <div>
-      <h1 style={{ marginBottom: '30px' }}>Dashboard Overview</h1>
+      <h1 style={{ marginBottom: '20px' }}>Dashboard Overview</h1>
+
+      <h2 style={{ fontSize: '15px', color: '#7f8c8d', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        Today
+      </h2>
+      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '30px' }}>
+        {todayCards.map((card) => (
+          <div
+            key={card.title}
+            style={{
+              flex: '1 1 180px',
+              backgroundColor: '#eef6ff',
+              padding: '20px',
+              borderRadius: '8px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+              border: '1px solid #d6e9ff',
+            }}
+          >
+            <h3 style={{ fontSize: '13px', color: '#5b7a9d', marginBottom: '10px' }}>{card.title}</h3>
+            <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#1a4a7a' }}>{card.value}</div>
+          </div>
+        ))}
+      </div>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
         {statCards.map((card) => (
@@ -116,7 +143,7 @@ const AdminDashboardPage = () => {
                         ? new Date(order.placedAt || order.createdAt).toLocaleDateString()
                         : '—'}
                     </td>
-                    <td style={{ padding: '12px' }}>{formatPrice(order.totalAmount)}</td>
+                    <td style={{ padding: '12px' }}>{formatPrice(order.totalAmount, order.currency)}</td>
                     <td style={{ padding: '12px' }}>{order.status}</td>
                   </tr>
                 ))

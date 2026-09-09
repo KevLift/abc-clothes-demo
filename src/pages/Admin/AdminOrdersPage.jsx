@@ -7,6 +7,7 @@ const AdminOrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
+  const [paymentType, setPaymentType] = useState('');
   const [selected, setSelected] = useState(null);
   const [history, setHistory] = useState([]);
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -31,6 +32,10 @@ const AdminOrdersPage = () => {
 
   useEffect(() => { load(); }, [status]);
 
+  const visibleOrders = paymentType
+    ? orders.filter((o) => (o.paymentMethod || 'CARD') === paymentType)
+    : orders;
+
   const openOrder = async (order) => {
     const full = await orderService.getOrderById(order.id);
     const hist = await orderService.getOrderHistory(order.id).catch(() => []);
@@ -54,21 +59,33 @@ const AdminOrdersPage = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
         <h1>Orders Management</h1>
-        <Select
-          value={status}
-          onChange={setStatus}
-          aria-label="Filter orders by status"
-          options={[
-            { value: '', label: 'All' },
-            { value: 'PENDING', label: 'Pending' },
-            { value: 'PAID', label: 'Paid' },
-            { value: 'SHIPPED', label: 'Shipped' },
-            { value: 'DELIVERED', label: 'Delivered' },
-            { value: 'CANCELLED', label: 'Cancelled' },
-          ]}
-        />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Select
+            value={paymentType}
+            onChange={setPaymentType}
+            aria-label="Filter orders by payment type"
+            options={[
+              { value: '', label: 'All types' },
+              { value: 'CARD', label: 'Card' },
+              { value: 'COD', label: 'Cash on Delivery' },
+            ]}
+          />
+          <Select
+            value={status}
+            onChange={setStatus}
+            aria-label="Filter orders by status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'PENDING', label: 'Pending' },
+              { value: 'PAID', label: 'Paid' },
+              { value: 'SHIPPED', label: 'Shipped' },
+              { value: 'DELIVERED', label: 'Delivered' },
+              { value: 'CANCELLED', label: 'Cancelled' },
+            ]}
+          />
+        </div>
       </div>
 
       {loading ? <div>Loading orders...</div> : (
@@ -80,16 +97,18 @@ const AdminOrdersPage = () => {
                   <th style={{ padding: 12, textAlign: 'left' }}>Order</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Customer</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Total</th>
+                  <th style={{ padding: 12, textAlign: 'left' }}>Type</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Status</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {visibleOrders.map((order) => (
                   <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: 12 }}>{order.orderNumber || order.id.substring(0, 8)}</td>
                     <td style={{ padding: 12 }}>{order.userId}</td>
-                    <td style={{ padding: 12 }}>{formatPrice(order.totalAmount)}</td>
+                    <td style={{ padding: 12 }}>{formatPrice(order.totalAmount, order.currency)}</td>
+                    <td style={{ padding: 12 }}>{order.paymentMethod === 'COD' ? 'COD' : 'Card'}</td>
                     <td style={{ padding: 12 }}>{order.status}</td>
                     <td style={{ padding: 12 }}>
                       <button style={{ color: '#3498db', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => openOrder(order)}>
@@ -106,7 +125,8 @@ const AdminOrdersPage = () => {
             <div style={{ background: 'white', padding: 20, borderRadius: 8 }}>
               <h3>{selected.orderNumber}</h3>
               <p>Status: <strong>{selected.status}</strong></p>
-              <p>Total: {formatPrice(selected.totalAmount)}</p>
+              <p>Payment: <strong>{selected.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Card'}</strong></p>
+              <p>Total: {formatPrice(selected.totalAmount, selected.currency)}</p>
               <div style={{ margin: '15px 0' }}>
                 <input
                   placeholder="Tracking number"
@@ -123,7 +143,12 @@ const AdminOrdersPage = () => {
               </div>
               <h4>Items</h4>
               {(selected.items || []).map((item) => (
-                <div key={item.id} style={{ fontSize: 14 }}>{item.quantity}× {item.productName}</div>
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, padding: '4px 0' }}>
+                  {item.imageUrl && (
+                    <img src={item.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
+                  )}
+                  <span>{item.quantity}× {item.productName}</span>
+                </div>
               ))}
               <h4 style={{ marginTop: 15 }}>History</h4>
               {history.map((h, i) => (

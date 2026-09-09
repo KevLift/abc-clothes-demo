@@ -79,12 +79,12 @@ const QuickViewBody = ({ detail, onClose }) => {
           {compareAtPrice ? (
             <>
               <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '10px' }}>
-                {formatPrice(compareAtPrice)}
+                {formatPrice(compareAtPrice, detail?.currency)}
               </span>
-              <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(price)}</span>
+              <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(price, detail?.currency)}</span>
             </>
           ) : (
-            <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(price)}</span>
+            <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(price, detail?.currency)}</span>
           )}
         </div>
 

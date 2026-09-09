@@ -39,6 +39,7 @@ const AccountPage = () => {
     countryCode: 'LK',
     isDefault: true,
   });
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [trackForm, setTrackForm] = useState({ orderNumber: '', email: '' });
   const [trackResult, setTrackResult] = useState(null);
   const [message, setMessage] = useState('');
@@ -223,31 +224,59 @@ const AccountPage = () => {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  {orders.map((order) => (
-                    <div key={order.id} style={{ border: '1px solid var(--color-separator)', padding: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                        <strong>{order.orderNumber || order.id?.substring?.(0, 8)}</strong>
-                        <span>{order.status}</span>
-                      </div>
-                      <p style={{ fontSize: '14px', color: 'var(--color-body-text)', margin: '10px 0' }}>
-                        Placed: {order.placedAt || order.createdAt
-                          ? new Date(order.placedAt || order.createdAt).toLocaleString()
-                          : '—'}
-                      </p>
-                      <p style={{ fontWeight: 'bold' }}>{formatPrice(order.totalAmount)}</p>
-                      {(order.items || []).map((item) => (
-                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '5px' }}>
-                          <span>{item.quantity}× {item.productName}</span>
-                          <span>{formatPrice(item.totalPrice || item.lineTotal)}</span>
+                  {orders.map((order) => {
+                    const isExpanded = expandedOrderId === order.id;
+                    const itemCount = (order.items || []).reduce((sum, i) => sum + (i.quantity || 1), 0);
+                    return (
+                      <div key={order.id} style={{ border: '1px solid var(--color-separator)', padding: '20px' }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') setExpandedOrderId(isExpanded ? null : order.id); }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                            <strong>{order.orderNumber || order.id?.substring?.(0, 8)}</strong>
+                            <span>{order.status}</span>
+                          </div>
+                          <p style={{ fontSize: '14px', color: 'var(--color-body-text)', margin: '10px 0' }}>
+                            Placed: {order.placedAt || order.createdAt
+                              ? new Date(order.placedAt || order.createdAt).toLocaleString()
+                              : '—'}
+                            {' · '}{order.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Card'}
+                          </p>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <p style={{ fontWeight: 'bold', margin: 0 }}>{formatPrice(order.totalAmount, order.currency)}</p>
+                            <span style={{ fontSize: '13px', color: 'var(--color-accent)' }}>
+                              {itemCount} item{itemCount === 1 ? '' : 's'} — {isExpanded ? 'Hide' : 'View'} products {isExpanded ? '▲' : '▼'}
+                            </span>
+                          </div>
                         </div>
-                      ))}
-                      {['PENDING', 'PAID', 'CONFIRMED'].includes(order.status) && (
-                        <button className="btn btn-outline" style={{ marginTop: '15px' }} onClick={() => cancelOrder(order.id)}>
-                          Cancel Order
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        {isExpanded && (
+                          <div style={{ marginTop: '15px', borderTop: '1px solid var(--color-separator)', paddingTop: '15px' }}>
+                            {(order.items || []).map((item) => (
+                              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', marginTop: '10px' }}>
+                                <img
+                                  src={item.imageUrl || '/images/product-placeholder.svg'}
+                                  alt=""
+                                  style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+                                  onError={(e) => { e.currentTarget.src = '/images/product-placeholder.svg'; }}
+                                />
+                                <span style={{ flex: 1 }}>{item.quantity}× {item.productName}</span>
+                                <span>{formatPrice(item.totalPrice || item.lineTotal, order.currency)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {['PENDING', 'PAID', 'CONFIRMED'].includes(order.status) && (
+                          <button className="btn btn-outline" style={{ marginTop: '15px' }} onClick={() => cancelOrder(order.id)}>
+                            Cancel Order
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -52,7 +52,7 @@ const AdminPaymentsPage = () => {
               <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
                 <td style={{ padding: 12 }}>{String(p.id).substring(0, 8)}</td>
                 <td style={{ padding: 12 }}>{p.orderId}</td>
-                <td style={{ padding: 12 }}>{formatPrice(p.amount)}</td>
+                <td style={{ padding: 12 }}>{formatPrice(p.amount, p.currency)}</td>
                 <td style={{ padding: 12 }}>{p.status}</td>
               </tr>
             ))}

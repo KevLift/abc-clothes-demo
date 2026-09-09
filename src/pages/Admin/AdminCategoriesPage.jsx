@@ -7,6 +7,7 @@ const AdminCategoriesPage = () => {
   const [form, setForm] = useState({ name: '', slug: '', description: '', parentId: '' });
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [attributes, setAttributes] = useState([]);
   const [attrForm, setAttrForm] = useState({ key: '', label: '', type: 'TEXT', required: false, filterable: true, variantAttribute: false, displayOrder: 0 });
 
@@ -23,15 +24,40 @@ const AdminCategoriesPage = () => {
 
   const createCategory = async (e) => {
     e.preventDefault();
-    await productService.createCategory({
-      name: form.name,
-      slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
-      description: form.description,
-      parentId: form.parentId || null,
-      sortOrder: 0,
-    });
+    if (editingId) {
+      await productService.updateCategory(editingId, {
+        name: form.name,
+        slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
+        description: form.description,
+        parentId: form.parentId || null,
+      });
+      setEditingId(null);
+    } else {
+      await productService.createCategory({
+        name: form.name,
+        slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
+        description: form.description,
+        parentId: form.parentId || null,
+        sortOrder: 0,
+      });
+    }
     setForm({ name: '', slug: '', description: '', parentId: '' });
     load();
+  };
+
+  const startEdit = (category) => {
+    setEditingId(category.id);
+    setForm({
+      name: category.name || '',
+      slug: category.slug || '',
+      description: category.description || '',
+      parentId: category.parentId || '',
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm({ name: '', slug: '', description: '', parentId: '' });
   };
 
   const loadAttributes = async (categoryId) => {
@@ -63,7 +89,7 @@ const AdminCategoriesPage = () => {
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         <div style={{ background: 'white', padding: '20px', borderRadius: 8 }}>
-          <h3>Create Category</h3>
+          <h3>{editingId ? 'Edit Category' : 'Create Category'}</h3>
           <form onSubmit={createCategory}>
             <input placeholder="Name (e.g. Men, Women, Suits)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required style={{ width: '100%', marginBottom: 8, padding: 8 }} />
             <input placeholder="Slug (optional)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} style={{ width: '100%', marginBottom: 8, padding: 8 }} />
@@ -76,10 +102,15 @@ const AdminCategoriesPage = () => {
               placeholder="Root category (no parent)"
               options={[
                 { value: '', label: 'Root category (no parent)' },
-                ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ...categories.filter((c) => c.id !== editingId).map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
-            <button className="btn btn-primary" type="submit">Create</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary" type="submit">{editingId ? 'Save Changes' : 'Create'}</button>
+              {editingId && (
+                <button type="button" className="btn btn-outline" onClick={cancelEdit}>Cancel</button>
+              )}
+            </div>
           </form>
           <h3 style={{ marginTop: 20 }}>All Categories</h3>
           {loading ? <p>Loading...</p> : categories.length === 0 ? (
@@ -93,6 +124,7 @@ const AdminCategoriesPage = () => {
                   <small>({c.slug})</small>
                 </span>
                 <span>
+                  <button onClick={() => startEdit(c)} style={{ marginRight: 8 }}>Edit</button>
                   <button onClick={() => loadAttributes(c.id)} style={{ marginRight: 8 }}>Attributes</button>
                   <button onClick={async () => { await productService.deleteCategory(c.id); load(); }} style={{ color: 'red' }}>Delete</button>
                 </span>

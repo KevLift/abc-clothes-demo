@@ -15,4 +15,9 @@ export const inquiryService = {
     const response = await api.get('/inquiries', { params });
     return unwrapPage(response.data);
   },
+
+  respond: async (id, response) => {
+    const res = await api.patch(`/inquiries/${id}/respond`, { response });
+    return unwrap(res.data) || res.data;
+  },
 };

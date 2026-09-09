@@ -38,6 +38,7 @@ import AdminAnalyticsPage from './pages/Admin/AdminAnalyticsPage';
 import AdminTeamPage from './pages/Admin/AdminTeamPage';
 import AdminNotificationsPage from './pages/Admin/AdminNotificationsPage';
 import AdminInquiriesPage from './pages/Admin/AdminInquiriesPage';
+import AdminWishlistPage from './pages/Admin/AdminWishlistPage';
 import AdminSocialPage from './pages/Admin/AdminSocialPage';
 import AdminPlatformPage from './pages/Admin/AdminPlatformPage';
 import AdminConfigPage from './pages/Admin/AdminConfigPage';
@@ -90,6 +91,7 @@ function App() {
                           <Route path="settings" element={<AdminSettingsPage />} />
                           <Route path="analytics" element={<AdminAnalyticsPage />} />
                           <Route path="inquiries" element={<AdminInquiriesPage />} />
+                          <Route path="wishlist" element={<AdminWishlistPage />} />
                           <Route path="social" element={<AdminSocialPage />} />
                           <Route path="platform" element={<AdminPlatformPage />} />
                           <Route path="config" element={<AdminConfigPage />} />

@@ -27,11 +27,21 @@ export const CurrencyProvider = ({ children }) => {
     localStorage.setItem('abc_currency', currency);
   }, [currency]);
 
-  const formatPrice = (priceInLkr) => {
-    if (!priceInLkr) return '';
-    const rate = EXCHANGE_RATES[currency] || 1;
-    const converted = priceInLkr * rate;
-    
+  // `amount` is expressed in `sourceCurrency` (the currency the product/order/payment
+  // was actually priced or recorded in on the backend) — NOT always LKR. We first
+  // normalize back to LKR (our rate table's base unit) then convert to whatever the
+  // shopper has selected. Omitting sourceCurrency preserves the historical LKR-input
+  // assumption for call sites that don't have a currency field to pass.
+  const formatPrice = (amount, sourceCurrency = 'LKR') => {
+    if (amount === null || amount === undefined || amount === '') return '';
+    const numericAmount = Number(amount);
+    if (Number.isNaN(numericAmount)) return '';
+
+    const sourceRate = EXCHANGE_RATES[sourceCurrency] || 1;
+    const targetRate = EXCHANGE_RATES[currency] || 1;
+    const amountInLkr = numericAmount / sourceRate;
+    const converted = amountInLkr * targetRate;
+
     return `${SYMBOLS[currency] || 'Rs.'}${converted.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2

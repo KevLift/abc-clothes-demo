@@ -29,6 +29,12 @@ export const inventoryService = {
     return unwrapPage(response.data);
   },
 
+  /** Every variant with its current stock, optionally filtered by product name/SKU. */
+  getAllInventory: async (params = {}) => {
+    const response = await api.get('/inventory/admin/all', { params });
+    return unwrapPage(response.data);
+  },
+
   // ── Checkout stock reservations (customer flow) ──────────────────────────
   /** Hold stock for a checkout attempt. referenceId = cartId or orderId. */
   reserve: async ({ variantId, referenceId, quantity, ttlMinutes }) => {

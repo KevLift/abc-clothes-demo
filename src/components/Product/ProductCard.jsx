@@ -60,6 +60,7 @@ const ProductCard = ({ product }) => {
         ...(raw.compareAtPrice != null ? { compareAtPrice: raw.compareAtPrice } : {}),
         currency: raw.currency,
         featured: raw.featured,
+        ...(raw.attributes ? { attributes: raw.attributes } : {}),
       };
       await productService.updateProduct(product.id, productPayload);
 
@@ -158,11 +159,11 @@ const ProductCard = ({ product }) => {
           <div style={{ fontFamily: 'var(--font-heading)', fontSize: '16px' }}>
             {product.salePrice ? (
               <>
-                <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '10px' }}>{formatPrice(product.basePrice || product.price)}</span>
-                <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(product.salePrice)}</span>
+                <span style={{ textDecoration: 'line-through', color: 'var(--color-separator)', marginRight: '10px' }}>{formatPrice(product.basePrice || product.price, product.currency)}</span>
+                <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(product.salePrice, product.currency)}</span>
               </>
             ) : (
-              <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(product.basePrice || product.price)}</span>
+              <span style={{ color: 'var(--color-heading-text)' }}>{formatPrice(product.basePrice || product.price, product.currency)}</span>
             )}
           </div>
         </div>

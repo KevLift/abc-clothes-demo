@@ -5,7 +5,8 @@ import { useCurrency } from '../context/CurrencyContext';
 import { FaTrash } from 'react-icons/fa';
 
 const CartPage = () => {
-  const { cartItems, removeFromCart, updateQuantity, cartTotal, loading } = useCart();
+  const { cart, cartItems, removeFromCart, updateQuantity, cartTotal, loading } = useCart();
+  const cartCurrency = cart?.currency || 'LKR';
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
 
@@ -76,7 +77,7 @@ const CartPage = () => {
                     </div>
                   </td>
                   <td style={{ padding: '20px 0', textAlign: 'center' }}>
-                    {formatPrice(item.price)}
+                    {formatPrice(item.price, cartCurrency)}
                   </td>
                   <td style={{ padding: '20px 0', textAlign: 'center' }}>
                     <div style={{ display: 'inline-flex', border: '1px solid var(--color-separator)' }}>
@@ -86,7 +87,7 @@ const CartPage = () => {
                     </div>
                   </td>
                   <td style={{ padding: '20px 0', textAlign: 'right' }}>
-                    {formatPrice(item.lineTotal || item.price * item.quantity)}
+                    {formatPrice(item.lineTotal || item.price * item.quantity, cartCurrency)}
                   </td>
                 </tr>
               ))}
@@ -99,11 +100,11 @@ const CartPage = () => {
             <h3 style={{ marginBottom: '20px' }}>Cart Totals</h3>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
               <span>Subtotal</span>
-              <span>{formatPrice(cartTotal)}</span>
+              <span>{formatPrice(cartTotal, cartCurrency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '25px', fontWeight: 'bold', fontSize: '18px' }}>
               <span>Total</span>
-              <span>{formatPrice(cartTotal)}</span>
+              <span>{formatPrice(cartTotal, cartCurrency)}</span>
             </div>
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => navigate('/checkout')}>
               Proceed to Checkout

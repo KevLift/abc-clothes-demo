@@ -53,6 +53,7 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState(stripeKey ? 'CARD' : 'COD');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -85,10 +86,18 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
         taxAmount: 0,
         shippingAmount: shippingCost,
         notes: formData.notes || null,
+        paymentMethod,
       });
 
       // Hold stock against this order while payment is attempted.
       await reserveForOrder(cartItems, order.id);
+
+      if (paymentMethod === 'COD') {
+        // No online charge to run — stock stays reserved until the order is
+        // fulfilled/confirmed, payment is collected on delivery.
+        onSuccess(order, false);
+        return;
+      }
 
       if (stripe && elements && stripeKey) {
         const card = elements.getElement(CardElement);
@@ -201,18 +210,32 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
         <input type="text" name="country" value={formData.country} onChange={handleChange} required style={inputStyle} />
       </div>
 
-      {stripeKey ? (
-        <>
-          <h3 style={{ marginBottom: '20px', borderBottom: '1px solid var(--color-separator)', paddingBottom: '10px' }}>
-            Payment
-          </h3>
-          <div style={{ padding: '15px', border: '1px solid var(--color-separator)', marginBottom: '30px' }}>
-            <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
-          </div>
-        </>
+      <h3 style={{ marginBottom: '20px', borderBottom: '1px solid var(--color-separator)', paddingBottom: '10px' }}>
+        Payment
+      </h3>
+
+      {stripeKey && (
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input type="radio" name="paymentMethod" checked={paymentMethod === 'CARD'} onChange={() => setPaymentMethod('CARD')} />
+            Card
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input type="radio" name="paymentMethod" checked={paymentMethod === 'COD'} onChange={() => setPaymentMethod('COD')} />
+            Cash on Delivery
+          </label>
+        </div>
+      )}
+
+      {paymentMethod === 'CARD' && stripeKey ? (
+        <div style={{ padding: '15px', border: '1px solid var(--color-separator)', marginBottom: '30px' }}>
+          <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
+        </div>
       ) : (
         <p style={{ marginBottom: '30px', fontSize: '13px', color: 'var(--color-body-text)' }}>
-          Online card payment is not configured. Your order will be placed and can be paid on fulfillment.
+          {stripeKey
+            ? 'Pay with cash when your order is delivered.'
+            : 'Online card payment is not configured. Your order will be placed and can be paid on fulfillment.'}
         </p>
       )}
 
@@ -224,7 +247,8 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
 };
 
 const CheckoutPage = () => {
-  const { cartItems, cartTotal, clearCart, cartId, refreshCart, loading: cartLoading } = useCart();
+  const { cart, cartItems, cartTotal, clearCart, cartId, refreshCart, loading: cartLoading } = useCart();
+  const cartCurrency = cart?.currency || 'LKR';
   const { user, isAuthenticated } = useAuth();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
@@ -334,12 +358,12 @@ const CheckoutPage = () => {
     formData,
     setFormData,
     shippingCost,
-    finalTotal: formatPrice(finalTotal),
+    finalTotal: formatPrice(finalTotal, cartCurrency),
     cartTotal,
     cartId,
     cartItems,
     onSuccess,
-    currency: 'LKR',
+    currency: cartCurrency,
   };
 
   return (
@@ -363,21 +387,21 @@ const CheckoutPage = () => {
             {cartItems.map((item) => (
               <div key={item.cartItemId} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '14px' }}>
                 <span>{item.quantity}× {item.name}</span>
-                <span>{formatPrice(item.lineTotal || item.price * item.quantity)}</span>
+                <span>{formatPrice(item.lineTotal || item.price * item.quantity, cartCurrency)}</span>
               </div>
             ))}
             <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid var(--color-separator)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span>Subtotal</span>
-              <span>{formatPrice(cartTotal)}</span>
+              <span>{formatPrice(cartTotal, cartCurrency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span>Shipping</span>
-              <span>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}</span>
+              <span>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost, cartCurrency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', marginTop: '15px' }}>
               <span>Total</span>
-              <span>{formatPrice(finalTotal)}</span>
+              <span>{formatPrice(finalTotal, cartCurrency)}</span>
             </div>
           </div>
         </div>
