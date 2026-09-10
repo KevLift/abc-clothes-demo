@@ -4,6 +4,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { FaTrash, FaShoppingCart } from 'react-icons/fa';
+import { getApiErrorMessage } from '../utils/errors';
 
 const WishlistPage = () => {
   const { wishlistItems, removeFromWishlist } = useWishlist();
@@ -14,8 +15,8 @@ const WishlistPage = () => {
     try {
       await addToCart(product, product.sizes?.[0], product.colors?.[0], 1);
       await removeFromWishlist(product.id);
-    } catch {
-      alert('Could not move item to cart');
+    } catch (err) {
+      alert(`Could not move item to cart: ${getApiErrorMessage(err)}`);
     }
   };
 

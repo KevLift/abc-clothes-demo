@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { inventoryService } from '../services/inventoryService';
-import { extractSizesAndColors } from '../utils/productHelpers';
+import { extractSizesAndColors, parseVariantOptions } from '../utils/productHelpers';
 import {
   colorsForSize,
   findExactVariant,
@@ -77,15 +77,13 @@ export const useProductVariantState = (product) => {
     return () => { cancelled = true; };
   }, [product?.id, variants]);
 
-  const availableColors = useMemo(
-    () => (selectedSize ? colorsForSize(variants, selectedSize) : allColors),
-    [variants, selectedSize, allColors]
-  );
-
-  const availableSizes = useMemo(
-    () => (selectedColor ? sizesForColor(variants, selectedColor) : allSizes),
-    [variants, selectedColor, allSizes]
-  );
+  // Show every size and colour the product offers — not just the ones that pair
+  // with the current selection. Sparse matrices (e.g. M/Black + L/Blue) would
+  // otherwise collapse to a single reachable cell. Combinations that don't exist
+  // are struck through in the UI; choosing one axis auto-corrects the other via
+  // selectSize / selectColor.
+  const availableColors = allColors;
+  const availableSizes = allSizes;
 
   // Keep color valid when size changes
   useEffect(() => {
@@ -146,6 +144,19 @@ export const useProductVariantState = (product) => {
     return isInStock(stockByVariant[v.id]);
   };
 
+  // "Does this option lead to at least one still-purchasable variant?" — used to
+  // mark options rather than the exact size+colour pair, so a sparse matrix
+  // (M only in Black, L only in Blue) shows every option as selectable. Unknown
+  // stock (not loaded / lookup failed) counts as available so nothing is struck
+  // through prematurely.
+  const optionHasStock = (predicate) => variants.some((v) => {
+    if (v.active === false || !predicate(parseVariantOptions(v))) return false;
+    const av = stockByVariant[v.id];
+    return av == null ? true : isInStock(av);
+  });
+  const isSizeAvailable = (size) => optionHasStock(({ size: vs }) => vs === size);
+  const isColorAvailable = (color) => optionHasStock(({ color: vc }) => vc === color);
+
   return {
     allSizes,
     allColors,
@@ -167,6 +178,8 @@ export const useProductVariantState = (product) => {
     canAddToCart,
     maxQty,
     isCombinationInStock,
+    isSizeAvailable,
+    isColorAvailable,
     stockByVariant,
   };
 };

@@ -8,6 +8,8 @@ import Breadcrumb from '../components/UI/Breadcrumb';
 
 const useQuery = () => new URLSearchParams(useLocation().search);
 
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'FREE SIZE'];
+
 const ShopPage = () => {
   const query = useQuery();
   const initialCategory = query.get('category') || '';
@@ -16,6 +18,10 @@ const ShopPage = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [resolvedCategory, setResolvedCategory] = useState(null);
+  // True when the API already narrowed results to the chosen category (incl. its
+  // subcategories). In that case we must NOT re-filter on the client, since a
+  // product in "Men > T-Shirts" has categoryName "T-Shirts", not "Men".
+  const [serverCategoryFiltered, setServerCategoryFiltered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,13 +30,16 @@ const ShopPage = () => {
     sizes: [],
     colors: [],
     priceRange: 500000,
+    // false until the shopper drags the price slider; while false the range
+    // auto-tracks the current result set's max price.
+    priceTouched: false,
   });
   const [sort, setSort] = useState('newest');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = React.useRef(null);
 
   useEffect(() => {
-    setFilters((prev) => ({ ...prev, category: initialCategory }));
+    setFilters((prev) => ({ ...prev, category: initialCategory, priceTouched: false }));
   }, [initialCategory]);
 
   useEffect(() => {
@@ -54,6 +63,7 @@ const ShopPage = () => {
         ]);
         setResolvedCategory(category);
 
+        let categoryHandledByServer = false;
         const productResult = await (
           searchQuery
             ? productService.searchProducts(searchQuery).then((list) => ({ content: list }))
@@ -63,12 +73,15 @@ const ShopPage = () => {
                   size: 100,
                   categorySlug,
                   ...(category?.id ? { categoryId: category.id } : {}),
-                }).catch(async () => {
-                  // fallback: fetch all and filter client-side by name
-                  return productService.getProducts({ page: 0, size: 100 });
                 })
+                  .then((res) => { categoryHandledByServer = true; return res; })
+                  .catch(async () => {
+                    // fallback: fetch all and filter client-side by name
+                    return productService.getProducts({ page: 0, size: 100 });
+                  })
               : productService.getProducts({ page: 0, size: 100 })
         );
+        setServerCategoryFiltered(categoryHandledByServer);
         setCategories(Array.isArray(cats) ? cats : []);
         const mapped = (productResult.content || []).map(normalizeProduct);
         setProducts(mapped);
@@ -76,7 +89,10 @@ const ShopPage = () => {
           const max = Math.max(...mapped.map((p) => p.salePrice || p.price), 1000);
           setFilters((prev) => ({
             ...prev,
-            priceRange: prev.priceRange > max ? max : prev.priceRange,
+            // If the shopper hasn't touched the slider, keep it pinned to the
+            // new result set's max so switching to a pricier category doesn't
+            // leave everything filtered out.
+            priceRange: prev.priceTouched ? Math.min(prev.priceRange, max) : max,
           }));
         }
       } catch (err) {
@@ -105,26 +121,51 @@ const ShopPage = () => {
     return Math.max(...products.map((p) => p.salePrice || p.price), 1000);
   }, [products]);
 
+  // Filter options come from the catalogue actually loaded, so a "Colour" chip
+  // always matches a real variant value (e.g. "Light Blue", not a fixed "Blue").
+  const facetSizes = useMemo(() => {
+    const set = new Set();
+    products.forEach((p) => (p.sizes || []).forEach((s) => s && set.add(s)));
+    return [...set].sort((a, b) => {
+      const ia = SIZE_ORDER.indexOf(String(a).toUpperCase());
+      const ib = SIZE_ORDER.indexOf(String(b).toUpperCase());
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return String(a).localeCompare(String(b));
+    });
+  }, [products]);
+  const facetColors = useMemo(() => {
+    const set = new Set();
+    products.forEach((p) => (p.colors || []).forEach((c) => c && set.add(c)));
+    return [...set].sort((a, b) => String(a).localeCompare(String(b)));
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
-    if (filters.category) {
+    if (filters.category && !serverCategoryFiltered) {
       const cat = filters.category.toLowerCase();
-      result = result.filter(
-        (p) =>
-          (p.category || '').toLowerCase() === cat ||
-          (p.categoryName || '').toLowerCase() === cat ||
-          (p.categorySlug || '').toLowerCase() === cat ||
-          (p.categorySlug || '').toLowerCase().includes(cat)
+      result = result.filter((p) =>
+        [
+          p.category,
+          p.categoryName,
+          p.categorySlug,
+          p.parentCategoryName,
+          resolvedCategory?.name,
+          resolvedCategory?.slug,
+        ].some((v) => (v || '').toString().toLowerCase() === cat)
       );
     }
 
     if (filters.sizes.length > 0) {
-      result = result.filter((p) => (p.sizes || []).some((s) => filters.sizes.includes(s)));
+      const wanted = new Set(filters.sizes.map((s) => s.toLowerCase()));
+      result = result.filter((p) => (p.sizes || []).some((s) => wanted.has(String(s).toLowerCase())));
     }
 
     if (filters.colors.length > 0) {
-      result = result.filter((p) => (p.colors || []).some((c) => filters.colors.includes(c)));
+      const wanted = new Set(filters.colors.map((c) => c.toLowerCase()));
+      result = result.filter((p) => (p.colors || []).some((c) => wanted.has(String(c).toLowerCase())));
     }
 
     result = result.filter((p) => (p.salePrice || p.price) <= filters.priceRange);
@@ -144,7 +185,7 @@ const ShopPage = () => {
     }
 
     return result;
-  }, [products, filters, sort]);
+  }, [products, filters, sort, serverCategoryFiltered, resolvedCategory]);
 
   const sortOptions = [
     { value: 'newest', label: 'Sort by Latest' },
@@ -219,6 +260,8 @@ const ShopPage = () => {
             setFilters={setFilters}
             maxPrice={maxPrice}
             categories={categories}
+            sizeOptions={facetSizes}
+            colorOptions={facetColors}
           />
         </aside>
 

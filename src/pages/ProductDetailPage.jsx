@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { productService } from '../services/productService';
 import { reviewService } from '../services/reviewService';
+import { orderService } from '../services/orderService';
 import { normalizeProduct } from '../utils/productHelpers';
 import { saveVariantsWithStock } from '../utils/saveVariantsWithStock';
+import { getApiErrorMessage } from '../utils/errors';
 import { useProductVariantState } from '../hooks/useProductVariantState';
 import Breadcrumb from '../components/UI/Breadcrumb';
 import { useCart } from '../context/CartContext';
@@ -11,10 +13,10 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../context/AuthContext';
 import { canAccessAdmin } from '../utils/roles';
-import { FaHeart, FaRegHeart, FaEdit } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaEdit, FaStar, FaRegStar } from 'react-icons/fa';
 import ProductFormModal from '../components/Admin/ProductFormModal';
 import ProductCard from '../components/Product/ProductCard';
-import Select from '../components/UI/Select';
+import StarRating from '../components/Product/StarRating';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -23,10 +25,15 @@ const ProductDetailPage = () => {
   const [related, setRelated] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('description');
+  const [activeTab, setActiveTab] = useState(
+    () => (typeof window !== 'undefined' && window.location.hash === '#reviews') ? 'reviews' : 'description',
+  );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', body: '' });
   const [reviewError, setReviewError] = useState('');
+  const [reviewOrderId, setReviewOrderId] = useState(null); // an order of mine that contains this product
+  const [myReview, setMyReview] = useState(null); // this viewer's own review for this product (any status)
+  const [reviewEligLoading, setReviewEligLoading] = useState(false);
   const [adding, setAdding] = useState(false);
 
   const { addToCart } = useCart();
@@ -51,6 +58,8 @@ const ProductDetailPage = () => {
     canAddToCart,
     maxQty,
     isCombinationInStock,
+    isSizeAvailable,
+    isColorAvailable,
   } = useProductVariantState(product);
 
   useEffect(() => {
@@ -95,6 +104,32 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id, navigate]);
 
+  // Reviews are verified-purchase: find one of my orders that contains this
+  // product (and isn't cancelled/unpaid) to attach the review to, and check
+  // whether I've already reviewed it.
+  useEffect(() => {
+    if (!product?.id || !isAuthenticated || user?.role !== 'CUSTOMER' || !user?.userId) {
+      setReviewOrderId(null);
+      setMyReview(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setReviewEligLoading(true);
+    Promise.all([
+      orderService.getUserOrders(user.userId, { page: 0, size: 100 }).catch(() => ({ content: [] })),
+      reviewService.getMyReviews().catch(() => []),
+    ]).then(([ordersPage, myReviews]) => {
+      if (cancelled) return;
+      setMyReview((myReviews || []).find((r) => r.productId === product.id) || null);
+      const blocked = ['PENDING_PAYMENT', 'CANCELLED', 'PAYMENT_FAILED'];
+      const eligible = (ordersPage.content || []).find((o) =>
+        !blocked.includes(o.status)
+        && (o.items || []).some((i) => i.productId === product.id));
+      setReviewOrderId(eligible?.id || null);
+    }).finally(() => { if (!cancelled) setReviewEligLoading(false); });
+    return () => { cancelled = true; };
+  }, [product?.id, isAuthenticated, user?.role, user?.userId]);
+
   if (isLoading) return <div style={{ paddingTop: '120px', textAlign: 'center' }}>Loading...</div>;
   if (!product) return null;
 
@@ -106,8 +141,8 @@ const ProductDetailPage = () => {
     setAdding(true);
     try {
       await addToCart(product, selectedSize, selectedColor, quantity);
-    } catch {
-      alert('Failed to add to cart. Please try again.');
+    } catch (err) {
+      alert(`Failed to add to cart: ${getApiErrorMessage(err)}`);
     } finally {
       setAdding(false);
     }
@@ -146,17 +181,32 @@ const ProductDetailPage = () => {
       setReviewError('Please log in as a customer to leave a review.');
       return;
     }
+    if (!reviewOrderId) {
+      setReviewError('You can review this product only after buying it.');
+      return;
+    }
     try {
-      await reviewService.createReview({
+      const created = await reviewService.createReview({
         productId: product.id,
+        orderId: reviewOrderId,
         rating: Number(reviewForm.rating),
         title: reviewForm.title,
         body: reviewForm.body,
       });
+      // Show it right away for this shopper, flagged as awaiting approval.
+      setMyReview({
+        id: created?.id || `local-${Date.now()}`,
+        productId: product.id,
+        userId: user.userId,
+        rating: Number(reviewForm.rating),
+        title: reviewForm.title,
+        body: reviewForm.body,
+        status: created?.status || 'PENDING',
+        createdAt: created?.createdAt || new Date().toISOString(),
+      });
       setReviewForm({ rating: 5, title: '', body: '' });
-      alert('Review submitted for moderation. Thank you!');
     } catch (err) {
-      setReviewError(err.response?.data?.message || 'Could not submit review. You may need a completed order.');
+      setReviewError(err.response?.data?.message || 'Could not submit review.');
     }
   };
 
@@ -229,7 +279,7 @@ const ProductDetailPage = () => {
               <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Size</h5>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 {availableSizes.map((size) => {
-                  const comboOk = !selectedColor || isCombinationInStock(size, selectedColor);
+                  const comboOk = isCombinationInStock(size, selectedColor) || isSizeAvailable(size);
                   return (
                     <button
                       type="button"
@@ -257,7 +307,7 @@ const ProductDetailPage = () => {
               <h5 style={{ fontSize: '12px', marginBottom: '10px' }}>Color</h5>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 {availableColors.map((color) => {
-                  const comboOk = !selectedSize || isCombinationInStock(selectedSize, color);
+                  const comboOk = isCombinationInStock(selectedSize, color) || isColorAvailable(color);
                   return (
                     <button
                       type="button"
@@ -369,48 +419,132 @@ const ProductDetailPage = () => {
             </tbody>
           </table>
         )}
-        {activeTab === 'reviews' && (
-          <div>
-            {reviews.length === 0 ? (
-              <p style={{ color: 'var(--color-body-text)' }}>No reviews yet.</p>
-            ) : reviews.map((r) => (
-              <div key={r.id} style={{ borderBottom: '1px solid var(--color-separator)', paddingBottom: '15px', marginBottom: 15 }}>
-                <strong>{r.title}</strong> — {r.rating}/5
-                <p style={{ color: 'var(--color-body-text)' }}>{r.body}</p>
+        {activeTab === 'reviews' && (() => {
+          const approved = reviews || [];
+          const count = approved.length;
+          const avg = count ? approved.reduce((s, r) => s + (r.rating || 0), 0) / count : 0;
+          const showMine = myReview && !approved.some((r) => r.id === myReview.id);
+          const list = [
+            ...(showMine ? [{ ...myReview, __mine: true }] : []),
+            ...approved.map((r) => ({ ...r, __mine: r.userId && r.userId === user?.userId })),
+          ];
+          const fmtDate = (d) => {
+            try {
+              return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            } catch { return ''; }
+          };
+
+          return (
+            <div>
+              {count > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+                  paddingBottom: 20, marginBottom: 24, borderBottom: '1px solid var(--color-separator)',
+                }}>
+                  <div style={{ fontSize: 40, fontWeight: 700, lineHeight: 1, color: 'var(--color-heading-text)' }}>
+                    {avg.toFixed(1)}
+                  </div>
+                  <div>
+                    <StarRating value={avg} size={18} />
+                    <div style={{ fontSize: 13, color: 'var(--color-body-text)', marginTop: 4 }}>
+                      Based on {count} review{count === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {list.length === 0 ? (
+                <p style={{ color: 'var(--color-body-text)' }}>
+                  No reviews yet. Be the first to review this product.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  {list.map((r) => (
+                    <div key={r.id} style={{ borderBottom: '1px solid var(--color-separator)', paddingBottom: 20 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                        <StarRating value={r.rating} size={14} />
+                        {r.title && <strong style={{ color: 'var(--color-heading-text)' }}>{r.title}</strong>}
+                        {r.__mine && r.status && r.status !== 'APPROVED' && (
+                          <span style={{
+                            fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px',
+                            padding: '2px 8px', background: 'var(--color-light-bg)', color: 'var(--color-body-text)',
+                          }}>
+                            {r.status === 'REJECTED' ? 'Not published' : 'Awaiting approval'}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--color-body-text)', marginBottom: 8 }}>
+                        {r.__mine ? 'You' : 'Verified Buyer'}{r.createdAt ? ` · ${fmtDate(r.createdAt)}` : ''}
+                      </div>
+                      {r.body && (
+                        <p style={{ color: 'var(--color-body-text)', margin: 0, lineHeight: 1.6 }}>{r.body}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginTop: 32 }}>
+                <h4 style={{ marginBottom: 15, color: 'var(--color-heading-text)' }}>Write a Review</h4>
+                {(!isAuthenticated || user?.role !== 'CUSTOMER') ? (
+                  <p style={{ color: 'var(--color-body-text)' }}>
+                    <Link to="/account" style={{ color: 'var(--color-accent)' }}>Log in</Link> as a customer to write a review.
+                  </p>
+                ) : reviewEligLoading ? (
+                  <p style={{ color: 'var(--color-body-text)' }}>Checking your orders…</p>
+                ) : myReview ? (
+                  <p style={{ color: 'var(--color-body-text)' }}>
+                    {myReview.status === 'APPROVED'
+                      ? 'Thanks — your review is published above.'
+                      : myReview.status === 'REJECTED'
+                        ? 'Your review was not approved by the store.'
+                        : 'Thanks — your review is awaiting approval and will appear once published.'}
+                  </p>
+                ) : !reviewOrderId ? (
+                  <p style={{ color: 'var(--color-body-text)' }}>
+                    You can write a review once you&apos;ve purchased this product.
+                  </p>
+                ) : (
+                  <form onSubmit={handleSubmitReview} style={{ maxWidth: 520 }}>
+                    {reviewError && <p style={{ color: '#c62828', marginBottom: 10 }}>{reviewError}</p>}
+                    <div style={{ marginBottom: 12 }}>
+                      <span style={{ display: 'block', fontSize: 13, color: 'var(--color-body-text)', marginBottom: 6 }}>Your rating</span>
+                      <span style={{ display: 'inline-flex', gap: 4 }}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setReviewForm({ ...reviewForm, rating: n })}
+                            aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-accent)', display: 'inline-flex' }}
+                          >
+                            {n <= Number(reviewForm.rating) ? <FaStar size={22} /> : <FaRegStar size={22} style={{ opacity: 0.5 }} />}
+                          </button>
+                        ))}
+                      </span>
+                    </div>
+                    <input
+                      placeholder="Review title"
+                      value={reviewForm.title}
+                      onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
+                      required
+                      style={{ width: '100%', padding: 12, marginBottom: 10, border: '1px solid var(--color-separator)', fontFamily: 'var(--font-body)' }}
+                    />
+                    <textarea
+                      placeholder="What did you like or dislike?"
+                      value={reviewForm.body}
+                      onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
+                      required
+                      rows={4}
+                      style={{ width: '100%', padding: 12, marginBottom: 12, border: '1px solid var(--color-separator)', fontFamily: 'var(--font-body)', resize: 'vertical' }}
+                    />
+                    <button type="submit" className="btn btn-primary">Submit Review</button>
+                  </form>
+                )}
               </div>
-            ))}
-            <form onSubmit={handleSubmitReview} style={{ maxWidth: '500px', marginTop: '20px' }}>
-              <h4 style={{ marginBottom: '15px' }}>Write a Review</h4>
-              {reviewError && <p style={{ color: '#c62828', marginBottom: '10px' }}>{reviewError}</p>}
-              <label style={{ display: 'block', marginBottom: '10px' }}>
-                Rating
-                <Select
-                  fullWidth
-                  value={String(reviewForm.rating)}
-                  onChange={(v) => setReviewForm({ ...reviewForm, rating: v })}
-                  style={{ marginTop: 5 }}
-                  options={[5, 4, 3, 2, 1].map((n) => ({ value: String(n), label: `${n} stars` }))}
-                />
-              </label>
-              <input
-                placeholder="Title"
-                value={reviewForm.title}
-                onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
-                required
-                style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
-              />
-              <textarea
-                placeholder="Your review"
-                value={reviewForm.body}
-                onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
-                required
-                rows={4}
-                style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
-              />
-              <button type="submit" className="btn btn-primary">Submit Review</button>
-            </form>
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </div>
 
       {related.length > 0 && (

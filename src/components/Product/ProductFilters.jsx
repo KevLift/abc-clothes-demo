@@ -1,10 +1,14 @@
 import React from 'react';
 
-const ProductFilters = ({ filters, setFilters, maxPrice, categories = [] }) => {
+const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
+const DEFAULT_COLORS = ['Black', 'Navy', 'White', 'Ivory', 'Beige', 'Red', 'Blue', 'Green'];
+
+const ProductFilters = ({ filters, setFilters, maxPrice, categories = [], sizeOptions, colorOptions }) => {
   const handleCategoryChange = (category) => {
     setFilters((prev) => ({
       ...prev,
       category: prev.category === category ? '' : category,
+      priceTouched: false,
     }));
   };
 
@@ -34,8 +38,10 @@ const ProductFilters = ({ filters, setFilters, maxPrice, categories = [] }) => {
       value: c.slug || c.name,
     }));
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
-  const colors = ['Black', 'Navy', 'White', 'Ivory', 'Beige', 'Red', 'Blue', 'Green'];
+  // Prefer the values that actually exist in the loaded catalogue; fall back to
+  // a sensible default set before products have loaded.
+  const sizes = sizeOptions && sizeOptions.length ? sizeOptions : DEFAULT_SIZES;
+  const colors = colorOptions && colorOptions.length ? colorOptions : DEFAULT_COLORS;
 
   return (
     <div style={{ width: '100%' }}>
@@ -76,7 +82,7 @@ const ProductFilters = ({ filters, setFilters, maxPrice, categories = [] }) => {
           min="0"
           max={maxPrice}
           value={Math.min(filters.priceRange, maxPrice)}
-          onChange={(e) => setFilters((prev) => ({ ...prev, priceRange: Number(e.target.value) }))}
+          onChange={(e) => setFilters((prev) => ({ ...prev, priceRange: Number(e.target.value), priceTouched: true }))}
           style={{
             width: '100%',
             '--range-progress': `${maxPrice ? (Math.min(filters.priceRange, maxPrice) / maxPrice) * 100 : 100}%`,

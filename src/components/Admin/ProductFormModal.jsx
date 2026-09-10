@@ -19,7 +19,7 @@ const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ccc', b
 
 const emptyVariant = () => ({
   name: '', sku: '', price: '', compareAtPrice: '', size: '', color: '',
-  position: 0, active: true, stockQty: '',
+  position: 0, active: true, stockQty: '', skuTouched: false,
 });
 
 const slugPart = (value) => String(value || '')
@@ -28,6 +28,10 @@ const slugPart = (value) => String(value || '')
   .replace(/[^A-Z0-9]+/g, '-')
   .replace(/(^-|-$)/g, '')
   .slice(0, 20);
+
+/** Variant SKU built from the product SKU + every option value (size, color). */
+const autoVariantSku = (productSku, size, color) =>
+  [slugPart(productSku) || 'SKU', slugPart(size), slugPart(color)].filter(Boolean).join('-');
 
 const ATTRIBUTE_VALUE_FIELD = {
   TEXT: 'valueText',
@@ -86,7 +90,22 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
     const base = custom
       ? custom
       : `New arrival: ${formData.name || 'Untitled product'}${formData.description ? `\n\n${formData.description}` : ''}`;
-    return `${base}\n\nShop now: ${productUrl}`;
+    // Mirrors ProductSocialPublishingService.resolvePriceLabel: lowest active variant
+    // price ("From …" when they differ), else the base price.
+    const currency = formData.currency || 'LKR';
+    const variantPrices = (formData.variants || [])
+      .filter((v) => v.active !== false && v.price !== '' && v.price != null)
+      .map((v) => parseFloat(v.price))
+      .filter((n) => !Number.isNaN(n));
+    let priceLine = '';
+    if (variantPrices.length) {
+      const lowest = Math.min(...variantPrices);
+      const mixed = variantPrices.some((p) => p !== lowest);
+      priceLine = `\n\nPrice: ${mixed ? 'From ' : ''}${currency} ${lowest.toFixed(2)}`;
+    } else if (formData.price !== '' && formData.price != null && !Number.isNaN(parseFloat(formData.price))) {
+      priceLine = `\n\nPrice: ${currency} ${parseFloat(formData.price).toFixed(2)}`;
+    }
+    return `${base}${priceLine}\n\nShop now: ${productUrl}`;
   };
 
   const socialPreviewImage = formData.images?.find((img) => img.primary)?.url
@@ -163,6 +182,8 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
             id: v.id,
             name: v.name || '',
             sku: v.sku || '',
+            // Existing variants keep their stored SKU; only regenerate if it's blank.
+            skuTouched: !!(v.sku || '').trim(),
             price: v.price || '',
             compareAtPrice: v.compareAtPrice || '',
             size: opts.size || '',
@@ -225,23 +246,39 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: type === 'checkbox' ? checked : value };
+      // Keep auto-generated variant SKUs in sync with the product SKU.
+      if (name === 'sku') {
+        next.variants = (prev.variants || []).map((v) =>
+          v.skuTouched ? v : { ...v, sku: autoVariantSku(value, v.size, v.color) },
+        );
+      }
+      return next;
+    });
   };
 
   const updateVariant = (index, field, value) => {
     setFormData((prev) => {
       const variants = [...prev.variants];
-      variants[index] = { ...variants[index], [field]: value };
+      const row = { ...variants[index], [field]: value };
+
+      // Typing in the SKU field means the seller owns it now — stop auto-filling.
+      // Clearing it hands control back so it regenerates from size/color again.
+      if (field === 'sku') {
+        row.skuTouched = value.trim() !== '';
+      }
+
       if (field === 'size' || field === 'color') {
-        const size = field === 'size' ? value : variants[index].size;
-        const color = field === 'color' ? value : variants[index].color;
-        variants[index].name = [size, color].filter(Boolean).join(' / ') || variants[index].name;
-        if (!variants[index].sku) {
-          const base = slugPart(prev.sku) || 'SKU';
-          const parts = [base, slugPart(size), slugPart(color)].filter(Boolean);
-          variants[index].sku = parts.join('-');
+        const size = field === 'size' ? value : row.size;
+        const color = field === 'color' ? value : row.color;
+        row.name = [size, color].filter(Boolean).join(' / ') || row.name;
+        if (!row.skuTouched) {
+          row.sku = autoVariantSku(prev.sku, size, color);
         }
       }
+
+      variants[index] = row;
       return { ...prev, variants };
     });
   };
@@ -350,9 +387,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
         const size = (v.size || '').trim();
         const color = (v.color || '').trim();
         const name = (v.name || [size, color].filter(Boolean).join(' / ')).trim();
-        const sku = (v.sku || [slugPart(formData.sku) || 'SKU', slugPart(size), slugPart(color)]
-          .filter(Boolean)
-          .join('-')).trim();
+        const sku = (v.sku || autoVariantSku(formData.sku, size, color)).trim();
         if (!size && !color && !name) return null;
         if (!sku) return null;
         return {

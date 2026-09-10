@@ -6,6 +6,7 @@ import { orderService } from '../services/orderService';
 import { authService } from '../services/authService';
 import { notificationService } from '../services/notificationService';
 import { canAccessAdmin } from '../utils/roles';
+import { getApiErrorMessage } from '../utils/errors';
 
 const inputStyle = {
   width: '100%',
@@ -85,14 +86,18 @@ const AccountPage = () => {
     e.preventDefault();
     setError('');
     const result = await login(loginData.email, loginData.password);
-    if (!result.success) setError('Invalid credentials');
+    if (!result.success) {
+      setError(getApiErrorMessage(result.error, 'Invalid credentials'));
+    }
   };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setError('');
     const result = await register(registerData.name, registerData.email, registerData.password);
-    if (!result.success) setError('Registration failed');
+    if (!result.success) {
+      setError(getApiErrorMessage(result.error, 'Registration failed'));
+    }
   };
 
   const saveProfile = async (e) => {
@@ -265,6 +270,11 @@ const AccountPage = () => {
                                 />
                                 <span style={{ flex: 1 }}>{item.quantity}× {item.productName}</span>
                                 <span>{formatPrice(item.totalPrice || item.lineTotal, order.currency)}</span>
+                                {['PAID', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) && item.productId && (
+                                  <Link to={`/product/${item.productId}#reviews`} style={{ color: 'var(--color-accent)', whiteSpace: 'nowrap' }}>
+                                    Write a review
+                                  </Link>
+                                )}
                               </div>
                             ))}
                           </div>

@@ -7,6 +7,7 @@ import { useWishlist } from '../../context/WishlistContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { productService } from '../../services/productService';
 import { normalizeProduct } from '../../utils/productHelpers';
+import { getApiErrorMessage } from '../../utils/errors';
 import { useProductVariantState } from '../../hooks/useProductVariantState';
 
 const QuickViewBody = ({ detail, onClose }) => {
@@ -31,6 +32,8 @@ const QuickViewBody = ({ detail, onClose }) => {
     canAddToCart,
     maxQty,
     isCombinationInStock,
+    isSizeAvailable,
+    isColorAvailable,
   } = useProductVariantState(detail);
 
   const imageSrc = detail?.images?.[0] || detail?.image || '/images/product-placeholder.svg';
@@ -44,8 +47,8 @@ const QuickViewBody = ({ detail, onClose }) => {
     try {
       await addToCart(detail, selectedSize, selectedColor, quantity);
       onClose();
-    } catch {
-      alert('Failed to add to cart');
+    } catch (err) {
+      alert(`Failed to add to cart: ${getApiErrorMessage(err)}`);
     } finally {
       setAdding(false);
     }
@@ -113,7 +116,7 @@ const QuickViewBody = ({ detail, onClose }) => {
             </h5>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {availableSizes.map((size) => {
-                const comboOk = !selectedColor || isCombinationInStock(size, selectedColor);
+                const comboOk = isCombinationInStock(size, selectedColor) || isSizeAvailable(size);
                 return (
                   <button
                     type="button"
@@ -143,7 +146,7 @@ const QuickViewBody = ({ detail, onClose }) => {
             </h5>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {availableColors.map((color) => {
-                const comboOk = !selectedSize || isCombinationInStock(selectedSize, color);
+                const comboOk = isCombinationInStock(selectedSize, color) || isColorAvailable(color);
                 return (
                   <button
                     type="button"

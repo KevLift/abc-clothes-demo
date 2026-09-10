@@ -48,7 +48,7 @@ const settleReservations = async (items, referenceId, action) => {
   );
 };
 
-const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTotal, cartId, cartItems, onSuccess, currency }) => {
+const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTotal, cartId, cartItems, onSuccess, onFailure, currency }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,9 +112,8 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
         });
 
         if (pmError) {
-          setOrderError(pmError.message || 'Card error');
           await settleReservations(cartItems, order.id, 'release');
-          onSuccess(order, false);
+          onFailure(order, pmError.message || 'Your card details could not be processed.');
           return;
         }
 
@@ -131,9 +130,8 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
           if (payment.clientSecret) {
             const { error: confirmError } = await stripe.confirmCardPayment(payment.clientSecret);
             if (confirmError) {
-              setOrderError(confirmError.message || 'Payment confirmation failed');
               await settleReservations(cartItems, order.id, 'release');
-              onSuccess(order, false);
+              onFailure(order, confirmError.message || 'Payment was declined.');
               return;
             }
           }
@@ -141,9 +139,9 @@ const CheckoutForm = ({ formData, setFormData, shippingCost, finalTotal, cartTot
           await settleReservations(cartItems, order.id, 'confirm');
           onSuccess(order, true);
         } catch (payErr) {
-          console.warn('Payment initiation failed, order created unpaid', payErr);
+          console.warn('Payment failed', payErr);
           await settleReservations(cartItems, order.id, 'release');
-          onSuccess(order, false);
+          onFailure(order, payErr.response?.data?.message || payErr.message || 'Payment could not be completed.');
         }
       } else {
         onSuccess(order, false);
@@ -269,6 +267,7 @@ const CheckoutPage = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
   const [paid, setPaid] = useState(false);
+  const [failure, setFailure] = useState(null); // { order, reason }
 
   useEffect(() => {
     if (user) {
@@ -301,6 +300,7 @@ const CheckoutPage = () => {
   const finalTotal = cartTotal + shippingCost;
 
   const onSuccess = async (order, wasPaid) => {
+    setFailure(null);
     setPlacedOrder(order);
     setPaid(wasPaid);
     setIsSuccess(true);
@@ -308,8 +308,30 @@ const CheckoutPage = () => {
     await refreshCart();
   };
 
+  // A payment attempt failed. The order was created then cancelled server-side;
+  // the cart is kept intact so the shopper can fix the card and retry.
+  const onFailure = (order, reason) => {
+    setFailure({ order, reason: reason || 'Payment could not be completed.' });
+  };
+
   if (cartLoading) {
     return <div className="container text-center" style={{ padding: '150px 20px' }}>Loading...</div>;
+  }
+
+  if (failure) {
+    return (
+      <div className="container text-center" style={{ padding: '150px 20px', minHeight: '60vh' }}>
+        <h1 style={{ color: '#c62828', marginBottom: '20px' }}>Payment Failed</h1>
+        <p style={{ fontSize: '16px', marginBottom: '10px' }}>{failure.reason}</p>
+        <p style={{ color: 'var(--color-body-text)', marginBottom: '30px' }}>
+          You have not been charged and your order was not placed. Your cart is still saved.
+        </p>
+        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-primary" onClick={() => setFailure(null)}>Try Again</button>
+          <Link to="/cart" className="btn btn-outline">Back to Cart</Link>
+        </div>
+      </div>
+    );
   }
 
   if (isSuccess && placedOrder) {
@@ -363,6 +385,7 @@ const CheckoutPage = () => {
     cartId,
     cartItems,
     onSuccess,
+    onFailure,
     currency: cartCurrency,
   };
 
@@ -372,13 +395,13 @@ const CheckoutPage = () => {
 
       <div style={{ display: 'flex', flexWrap: 'wrap-reverse', gap: '40px' }}>
         <div style={{ flex: '1 1 60%', minWidth: '300px' }}>
-          {stripePromise ? (
-            <Elements stripe={stripePromise}>
-              <CheckoutForm {...formProps} />
-            </Elements>
-          ) : (
+          {/* Always mount <Elements>, even with stripe={null}: CheckoutForm calls
+              useStripe()/useElements() unconditionally, and those hooks throw if
+              there is no <Elements> ancestor. A null stripe prop is supported and
+              simply makes the hooks return null (COD-only checkout still works). */}
+          <Elements stripe={stripePromise}>
             <CheckoutForm {...formProps} />
-          )}
+          </Elements>
         </div>
 
         <div style={{ flex: '1 1 300px' }}>

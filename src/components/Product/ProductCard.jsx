@@ -10,6 +10,7 @@ import ProductQuickView from './ProductQuickView';
 import ProductFormModal from '../Admin/ProductFormModal';
 import { productService } from '../../services/productService';
 import { saveVariantsWithStock } from '../../utils/saveVariantsWithStock';
+import { getApiErrorMessage } from '../../utils/errors';
 
 const ProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -38,8 +39,8 @@ const ProductCard = ({ product }) => {
     e.preventDefault();
     try {
       await addToCart(product, product.sizes?.[0], product.colors?.[0], 1);
-    } catch {
-      alert('Failed to add to cart');
+    } catch (err) {
+      alert(`Failed to add to cart: ${getApiErrorMessage(err)}`);
     }
   };
 
