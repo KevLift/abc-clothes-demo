@@ -428,6 +428,10 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
 
     if (formData.compareAtPrice) {
       payload.compareAtPrice = parseFloat(formData.compareAtPrice);
+    } else if (productToEdit) {
+      // On edit, send 0 for an emptied field so the backend clears an existing
+      // compare-at price (an absent field would leave it unchanged).
+      payload.compareAtPrice = 0;
     }
 
     // Social publishing is only honoured on create (the backend ignores it on update).

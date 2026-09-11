@@ -6,23 +6,46 @@ const AdminAnalyticsPage = () => {
   const [from, setFrom] = useState(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [exportStatus, setExportStatus] = useState('');
   const { formatPrice } = useCurrency();
 
   const load = async () => {
-    setSummary(await analyticsService.getSummary(from, to));
+    setLoading(true);
+    setError(null);
+    try {
+      setSummary(await analyticsService.getSummary(from, to));
+    } catch (err) {
+      console.error('Failed to load analytics', err);
+      setSummary(null);
+      setError('Could not load analytics for this range. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   const exportCsv = async () => {
-    const blob = await analyticsService.exportOrdersCsv(from, to);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `orders-${from}-${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = await analyticsService.exportOrdersCsv(from, to, exportStatus);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const suffix = exportStatus ? `-${exportStatus.toLowerCase()}` : '';
+      a.download = `orders-${from}-${to}${suffix}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export orders CSV', err);
+      setError('Could not export orders for this range. Please try again.');
+    }
   };
+
+  const fulfillmentPct = summary?.fulfillmentRate != null
+    ? `${Math.round(summary.fulfillmentRate * 100)}%`
+    : '—';
 
   return (
     <div>
@@ -30,14 +53,39 @@ const AdminAnalyticsPage = () => {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        <button className="btn btn-primary" onClick={load}>Refresh</button>
-        <button className="btn btn-outline" onClick={exportCsv}>Export Orders CSV</button>
+        <button className="btn btn-primary" onClick={load} disabled={loading}>
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <select
+            value={exportStatus}
+            onChange={(e) => setExportStatus(e.target.value)}
+            aria-label="Orders to include in the export"
+            style={{ padding: '8px 10px' }}
+          >
+            <option value="">Completed orders</option>
+            <option value="ALL">All orders</option>
+            <option value="PENDING_PAYMENT">Pending payment</option>
+            <option value="PAID">Paid</option>
+            <option value="PROCESSING">Processing</option>
+            <option value="SHIPPED">Shipped</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="REFUNDED">Refunded</option>
+          </select>
+          <button className="btn btn-outline" onClick={exportCsv}>Export Orders CSV</button>
+        </span>
       </div>
-      {!summary ? <p>Loading...</p> : (
+
+      {error && (
+        <p style={{ color: '#c0392b', marginBottom: 20 }}>{error}</p>
+      )}
+
+      {loading ? <p>Loading...</p> : !summary ? null : (
         <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap' }}>
           <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>Revenue</div>
-            <div style={{ fontSize: 24, fontWeight: 'bold' }}>{formatPrice(summary.totalRevenue || 0, summary.currency)}</div>
+            <div style={{ fontSize: 24, fontWeight: 'bold' }}>{formatPrice(summary.revenue || 0, summary.currency)}</div>
           </div>
           <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>Orders</div>
@@ -49,7 +97,7 @@ const AdminAnalyticsPage = () => {
           </div>
           <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>Fulfillment Rate</div>
-            <div style={{ fontSize: 24, fontWeight: 'bold' }}>{summary.fulfillmentRate != null ? `${summary.fulfillmentRate}%` : '—'}</div>
+            <div style={{ fontSize: 24, fontWeight: 'bold' }}>{fulfillmentPct}</div>
           </div>
         </div>
       )}

@@ -15,6 +15,66 @@ const inputStyle = {
   marginBottom: '10px',
 };
 
+const CHANNEL_LABELS = {
+  WELCOME: 'Welcome',
+  ORDER_CONFIRMED: 'Order confirmed',
+  ORDER_SHIPPED: 'Order shipped',
+  ORDER_DELIVERED: 'Order delivered',
+  PAYMENT_COMPLETED: 'Payment received',
+  PAYMENT_FAILED: 'Payment failed',
+  PASSWORD_RESET: 'Password reset',
+  CART_ABANDONED: 'Items left in your cart',
+  INQUIRY_RESPONSE: 'Reply to your message',
+  CUSTOM_MESSAGE: 'Message from the store',
+};
+
+const NotificationRow = ({ n, onRead }) => {
+  const [open, setOpen] = useState(false);
+  const toggle = () => {
+    setOpen((wasOpen) => {
+      if (!wasOpen && !n.isRead) onRead?.(n.id);
+      return !wasOpen;
+    });
+  };
+  const title = n.subject || CHANNEL_LABELS[n.channel] || n.channel || n.type || 'Notification';
+  const when = n.createdAt ? new Date(n.createdAt).toLocaleString() : '';
+  const body = n.body || '';
+  const looksHtml = /<\/?[a-z][\s\S]*>/i.test(body);
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--color-separator)', padding: '14px 0', opacity: n.isRead ? 0.55 : 1 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+        {!n.isRead && (
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--color-accent)', flexShrink: 0 }} />
+        )}
+        <strong>{title}</strong>
+      </div>
+      {when && <div style={{ fontSize: '12px', color: 'var(--color-body-text)', marginTop: '2px' }}>{when}</div>}
+      {body && (
+        <>
+          <button
+            type="button"
+            onClick={toggle}
+            style={{ marginTop: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-accent)', fontSize: '13px' }}
+          >
+            {open ? 'Hide message ▲' : 'View message ▼'}
+          </button>
+          {open && (looksHtml ? (
+            <iframe
+              title={`notification-${n.id}`}
+              sandbox=""
+              srcDoc={body}
+              style={{ width: '100%', height: '420px', border: '1px solid var(--color-separator)', borderRadius: '4px', marginTop: '8px', background: 'white' }}
+            />
+          ) : (
+            <p style={{ fontSize: '14px', marginTop: '8px', whiteSpace: 'pre-wrap' }}>{body}</p>
+          ))}
+        </>
+      )}
+    </div>
+  );
+};
+
 const AccountPage = () => {
   const { user, isAuthenticated, login, register, logout, logoutAllDevices, updateUserLocal } = useAuth();
   const [isLoginView, setIsLoginView] = useState(true);
@@ -269,7 +329,7 @@ const AccountPage = () => {
                                   onError={(e) => { e.currentTarget.src = '/images/product-placeholder.svg'; }}
                                 />
                                 <span style={{ flex: 1 }}>{item.quantity}× {item.productName}</span>
-                                <span>{formatPrice(item.totalPrice || item.lineTotal, order.currency)}</span>
+                                <span>{formatPrice(item.subtotal ?? item.totalPrice ?? item.lineTotal, order.currency)}</span>
                                 {['PAID', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) && item.productId && (
                                   <Link to={`/product/${item.productId}#reviews`} style={{ color: 'var(--color-accent)', whiteSpace: 'nowrap' }}>
                                     Write a review
@@ -355,10 +415,18 @@ const AccountPage = () => {
                 <p>No notifications.</p>
               ) : (
                 notifications.map((n) => (
-                  <div key={n.id} style={{ borderBottom: '1px solid var(--color-separator)', padding: '12px 0', opacity: n.read ? 0.6 : 1 }}>
-                    <strong>{n.title || n.type}</strong>
-                    <p style={{ fontSize: '14px' }}>{n.message || n.body}</p>
-                  </div>
+                  <NotificationRow
+                    key={n.id}
+                    n={n}
+                    onRead={async (id) => {
+                      setNotifications((prev) => prev.map((x) => (x.id === id ? { ...x, isRead: true } : x)));
+                      try {
+                        await notificationService.markRead(id);
+                      } catch {
+                        // non-critical — list refreshes on next visit
+                      }
+                    }}
+                  />
                 ))
               )}
             </div>
@@ -370,11 +438,28 @@ const AccountPage = () => {
               <input style={inputStyle} placeholder="Order number" value={trackForm.orderNumber} onChange={(e) => setTrackForm({ ...trackForm, orderNumber: e.target.value })} required />
               <input style={inputStyle} type="email" placeholder="Email" value={trackForm.email} onChange={(e) => setTrackForm({ ...trackForm, email: e.target.value })} required />
               <button type="submit" className="btn btn-primary">Track</button>
-              {trackResult && (
-                <pre style={{ marginTop: '20px', background: '#f8f9fa', padding: '15px', overflow: 'auto' }}>
-                  {JSON.stringify(trackResult, null, 2)}
-                </pre>
-              )}
+              {trackResult && (trackResult.error ? (
+                <p style={{ marginTop: '20px', color: '#c62828' }}>{trackResult.error}</p>
+              ) : (
+                <div style={{ marginTop: '20px', border: '1px solid var(--color-separator)', borderRadius: '4px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                    <strong>{trackResult.orderNumber}</strong>
+                    <span style={{ fontWeight: 700, letterSpacing: '0.5px', color: 'var(--color-accent)' }}>
+                      {(trackResult.status || '').replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  {[
+                    ['Placed', trackResult.placedAt],
+                    ['Shipped', trackResult.shippedAt],
+                    ['Delivered', trackResult.deliveredAt],
+                  ].map(([label, ts]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', padding: '4px 0' }}>
+                      <span style={{ color: 'var(--color-body-text)' }}>{label}</span>
+                      <span>{ts ? new Date(ts).toLocaleString() : '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </form>
           )}
         </div>

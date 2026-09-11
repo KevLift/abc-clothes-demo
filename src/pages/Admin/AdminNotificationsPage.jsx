@@ -148,23 +148,6 @@ const AdminNotificationsPage = () => {
     <div>
       <h1 style={{ marginBottom: 20 }}>Notifications</h1>
 
-      <h3 style={{ marginBottom: 12 }}>Failed Notifications</h3>
-      {loadingFailed ? (
-        <p style={{ marginBottom: 30 }}>Loading…</p>
-      ) : failed.length === 0 ? (
-        <p style={{ marginBottom: 30, color: '#888' }}>No failed notifications.</p>
-      ) : (
-        <div style={{ marginBottom: 30 }}>
-          {failed.map((n) => (
-            <NotificationCard
-              key={n.id}
-              n={retryingId === n.id ? { ...n, status: 'RETRYING' } : n}
-              onRetry={retry}
-            />
-          ))}
-        </div>
-      )}
-
       <h3 style={{ marginBottom: 12 }}>Look Up Notifications</h3>
       <form
         onSubmit={runLookup}
@@ -232,6 +215,23 @@ const AdminNotificationsPage = () => {
             {results.length} notification{results.length === 1 ? '' : 's'} found
           </p>
           {results.map((n) => <NotificationCard key={n.id} n={n} />)}
+        </div>
+      )}
+
+      <h3 style={{ marginTop: 36, marginBottom: 12 }}>Failed Notifications</h3>
+      {loadingFailed ? (
+        <p style={{ marginBottom: 30 }}>Loading…</p>
+      ) : failed.length === 0 ? (
+        <p style={{ marginBottom: 30, color: '#888' }}>No failed notifications.</p>
+      ) : (
+        <div style={{ marginBottom: 30 }}>
+          {failed.map((n) => (
+            <NotificationCard
+              key={n.id}
+              n={retryingId === n.id ? { ...n, status: 'RETRYING' } : n}
+              onRetry={retry}
+            />
+          ))}
         </div>
       )}
     </div>

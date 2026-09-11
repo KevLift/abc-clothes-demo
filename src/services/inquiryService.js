@@ -20,4 +20,10 @@ export const inquiryService = {
     const res = await api.patch(`/inquiries/${id}/respond`, { response });
     return unwrap(res.data) || res.data;
   },
+
+  /** Admin: queue a free-form email to a single newsletter subscriber. */
+  notifySubscriber: async (id, { subject, message }) => {
+    const res = await api.post(`/inquiries/${id}/notify`, { subject, message });
+    return unwrap(res.data) || res.data;
+  },
 };

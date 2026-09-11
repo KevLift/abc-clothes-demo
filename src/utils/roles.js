@@ -23,5 +23,12 @@ export const hasPermission = (user, permission) => {
 
 export const canAccessAdmin = (user) => isStoreAdmin(user);
 
+/**
+ * Cart and wishlist are shopper-only affordances. Store team (owner + members)
+ * and platform operators run the store rather than buy from it, so storefront
+ * shopping UI is hidden for them. Guests (no user) count as shoppers.
+ */
+export const canShop = (user) => !isStoreAdmin(user) && !isPlatformOperator(user);
+
 /** Who may load the /admin shell at all — store team plus platform operators. */
 export const canAccessAdminShell = (user) => isStoreAdmin(user) || isPlatformOperator(user);

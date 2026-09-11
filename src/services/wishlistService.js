@@ -1,4 +1,4 @@
-import api, { unwrap, unwrapPage } from './api';
+import api, { unwrap } from './api';
 
 export const wishlistService = {
   getMine: async () => {
@@ -14,11 +14,5 @@ export const wishlistService = {
 
   remove: async (productId) => {
     await api.delete(`/wishlist/items/${productId}`);
-  },
-
-  /** Admin: products ranked by how many customers have wishlisted them. */
-  getMostWishlisted: async (params = {}) => {
-    const response = await api.get('/wishlist/admin/top-products', { params });
-    return unwrapPage(response.data);
   },
 };

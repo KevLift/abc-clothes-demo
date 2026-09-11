@@ -4,7 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { useSearch } from '../../context/SearchContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useAuth } from '../../context/AuthContext';
-import { canAccessAdmin } from '../../utils/roles';
+import { canAccessAdmin, canShop } from '../../utils/roles';
 import { useStoreCategories } from '../../hooks/useStoreCategories';
 import { FaSearch, FaShoppingBag, FaBars, FaHeart, FaUser } from 'react-icons/fa';
 import MobileMenu from './MobileMenu';
@@ -55,6 +55,7 @@ const Header = () => {
 
   const isHeaderSolid = !isTransparentPage || isScrolled;
   const textColor = isHeaderSolid ? 'var(--color-heading-text)' : 'white';
+  const showShopping = canShop(user);
 
   const navLinks = [
     { label: 'Home', to: '/' },
@@ -81,43 +82,6 @@ const Header = () => {
           transform: isScrolling ? 'translateY(-100%)' : 'translateY(0)',
         }}
       >
-        {!isHeaderSolid && (
-          <div
-            className="top-bar-row"
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              padding: '10px 40px',
-              fontFamily: 'var(--font-nav)',
-              fontSize: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-              gap: '20px',
-              borderBottom: '1px solid rgba(255,255,255,0.15)',
-            }}
-          >
-            <Select
-              variant="ghost"
-              value={currency}
-              onChange={setCurrency}
-              aria-label="Currency"
-              options={availableCurrencies.map((c) => ({ value: c, label: c }))}
-            />
-            {canAccessAdmin(user) && (
-              <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
-                Admin Dashboard
-              </Link>
-            )}
-            {/* Account / Wishlist / Shopping Bag are already represented as icons in the
-                main nav row below on every page — keep this row to currency + admin + search
-                only so they don't render twice when the header is transparent. */}
-            <button onClick={openSearch} style={{ color: 'rgba(255,255,255,0.85)', padding: 0 }}>
-              <FaSearch size={12} />
-            </button>
-          </div>
-        )}
-
         <div
           className="main-nav-row"
           style={{
@@ -175,11 +139,16 @@ const Header = () => {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-            {isHeaderSolid && (
-              <button onClick={openSearch} style={{ color: textColor, padding: 0 }}>
-                <FaSearch size={16} />
-              </button>
-            )}
+            <Select
+              variant={isHeaderSolid ? 'default' : 'ghost'}
+              value={currency}
+              onChange={setCurrency}
+              aria-label="Currency"
+              options={availableCurrencies.map((c) => ({ value: c, label: c }))}
+            />
+            <button onClick={openSearch} aria-label="Search" style={{ color: textColor, padding: 0 }}>
+              <FaSearch size={16} />
+            </button>
             {canAccessAdmin(user) && (
               <Link to="/admin" style={{ color: 'var(--color-accent)', fontWeight: 'bold' }} className="desktop-nav">
                 Dashboard
@@ -188,38 +157,47 @@ const Header = () => {
             <Link to="/account" style={{ color: textColor }} className="desktop-nav">
               <FaUser size={16} />
             </Link>
-            <Link to="/wishlist" style={{ color: textColor }} className="desktop-nav">
-              <FaHeart size={16} />
-            </Link>
-            <Link to="/cart" style={{ color: textColor, position: 'relative' }}>
-              <FaShoppingBag size={18} />
-              {cartCount > 0 && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '-8px',
-                    background: 'var(--color-accent)',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '17px',
-                    height: '17px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '10px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {cartCount}
-                </span>
-              )}
-            </Link>
+            {showShopping && (
+              <>
+                <Link to="/wishlist" style={{ color: textColor }} className="desktop-nav">
+                  <FaHeart size={16} />
+                </Link>
+                <Link to="/cart" style={{ color: textColor, position: 'relative' }}>
+                  <FaShoppingBag size={18} />
+                  {cartCount > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        background: 'var(--color-accent)',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '17px',
+                        height: '17px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
 
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} categoryLinks={navItems} />
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        categoryLinks={navItems}
+        showShoppingLinks={showShopping}
+      />
       <SearchOverlay />
     </>
   );

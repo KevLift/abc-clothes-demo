@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Toast from '../UI/Toast';
 import { inquiryService } from '../../services/inquiryService';
+import { getApiErrorMessage } from '../../utils/errors';
 
 const Newsletter = () => {
   const [email, setEmail] = useState('');
@@ -15,8 +16,8 @@ const Newsletter = () => {
       await inquiryService.subscribeNewsletter(email);
       setShowToast(true);
       setEmail('');
-    } catch {
-      setError('Subscription failed. Please try again.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Subscription failed. Please try again.'));
     }
   };
 

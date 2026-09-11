@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaTimes } from 'react-icons/fa';
 
-const MobileMenu = ({ isOpen, onClose, categoryLinks = [] }) => {
+const MobileMenu = ({ isOpen, onClose, categoryLinks = [], showShoppingLinks = true }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -49,7 +49,9 @@ const MobileMenu = ({ isOpen, onClose, categoryLinks = [] }) => {
             <hr style={{ borderColor: 'var(--color-separator)' }} />
 
             <Link to="/account" onClick={onClose}>My Account</Link>
-            <Link to="/wishlist" onClick={onClose}>Wishlist</Link>
+            {showShoppingLinks && (
+              <Link to="/wishlist" onClick={onClose}>Wishlist</Link>
+            )}
           </nav>
         </motion.div>
       )}

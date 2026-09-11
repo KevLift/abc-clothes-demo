@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Toast from '../components/UI/Toast';
 import { inquiryService } from '../services/inquiryService';
+import { settingsService } from '../services/settingsService';
+import { getApiErrorMessage } from '../utils/errors';
+
+const FALLBACK_PHONE = '(+94) 112 345 678';
+const FALLBACK_EMAIL = 'info@abcclothes.lk';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [store, setStore] = useState(null);
+
+  useEffect(() => {
+    settingsService.getPublic().then(setStore).catch(() => {});
+  }, []);
+
+  const storePhone = store?.supportPhone?.trim() || FALLBACK_PHONE;
+  const storeEmail = store?.storeEmail?.trim() || FALLBACK_EMAIL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,8 +29,8 @@ const ContactPage = () => {
       await inquiryService.submitContact(formData);
       setShowToast(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
-    } catch {
-      setError('Failed to send message. Please try again.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to send message. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -93,8 +106,8 @@ const ContactPage = () => {
                 Sri Lanka
               </p>
               <p style={{ color: 'var(--color-body-text)', fontSize: '14px', marginTop: '10px' }}>
-                <strong>Phone:</strong> (+94) 112 345 678<br/>
-                <strong>Email:</strong> info@abcclothes.lk
+                <strong>Phone:</strong> <a href={`tel:${storePhone.replace(/\s+/g, '')}`} style={{ color: 'inherit' }}>{storePhone}</a><br/>
+                <strong>Email:</strong> <a href={`mailto:${storeEmail}`} style={{ color: 'inherit' }}>{storeEmail}</a>
               </p>
             </div>
             
