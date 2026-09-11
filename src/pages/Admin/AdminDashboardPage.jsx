@@ -69,7 +69,7 @@ const AdminDashboardPage = () => {
               flex: '1 1 180px',
               backgroundColor: '#eef6ff',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: 0,
               boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
               border: '1px solid #d6e9ff',
             }}
@@ -88,7 +88,7 @@ const AdminDashboardPage = () => {
               flex: '1 1 180px',
               backgroundColor: 'white',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: 0,
               boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
             }}
           >
@@ -99,7 +99,7 @@ const AdminDashboardPage = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '20px', marginTop: '30px', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 320px', backgroundColor: 'white', padding: '25px', borderRadius: '8px' }}>
+        <div style={{ flex: '1 1 320px', backgroundColor: 'white', padding: '25px', borderRadius: 0 }}>
           <h2 style={{ fontSize: '18px', marginBottom: '15px' }}>Top Products</h2>
           {(analytics?.topProducts || []).length === 0 ? (
             <p style={{ color: '#95a5a6' }}>No analytics data for the last 30 days.</p>
@@ -115,7 +115,7 @@ const AdminDashboardPage = () => {
           <Link to="/admin/analytics" style={{ color: '#3498db', fontSize: '14px' }}>View analytics →</Link>
         </div>
 
-        <div style={{ flex: '2 1 500px', backgroundColor: 'white', padding: '25px', borderRadius: '8px' }}>
+        <div style={{ flex: '2 1 500px', backgroundColor: 'white', padding: '25px', borderRadius: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
             <h2 style={{ fontSize: '18px' }}>Recent Orders</h2>
             <Link to="/admin/orders" style={{ color: '#3498db', fontSize: '14px' }}>View All</Link>

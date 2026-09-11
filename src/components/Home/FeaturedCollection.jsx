@@ -1,47 +1,88 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import SqueezeCarousel from '../UI/CarouselSqueeze';
+
+const mark = (text) => (
+    <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '-0.02em', color: 'white' }}>{text}</span>
+);
+
+const slides = [
+    {
+        id: "womens-summer",
+        title: "Women's Summer Collection",
+        description: "Embrace the warmth with our lightweight, breathable fabrics and vibrant prints designed for the perfect summer getaway.",
+        action: "Shop Women's",
+        href: "/shop/women",
+        overlay: mark("Summer '26"),
+        image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1000&h=1000&fit=crop&fm=webp&q=90",
+        imageAlt: "Woman in stylish summer dress",
+    },
+    {
+        id: "mens-tailoring",
+        title: "The Gold Label Tailoring",
+        description: "Incorporating fine Italian craftsmanship with modern design. Discover suits that redefine elegance and confidence.",
+        action: "Discover Gold Label",
+        href: "/shop/men",
+        overlay: mark("Gold Label"),
+        image: "https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1000&h=1000&fit=crop&fm=webp&q=90",
+        imageAlt: "Man in an elegant brown tailored suit",
+    },
+    {
+        id: "accessories",
+        title: "Luxury Accessories",
+        description: "Complete your look with our curated selection of premium leather goods, footwear, and timeless accessories.",
+        action: "View Accessories",
+        href: "/shop/accessories",
+        overlay: mark("Accessories"),
+        image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=1000&h=1000&fit=crop&fm=webp&q=90",
+        imageAlt: "Premium leather shoes and accessories",
+    },
+    {
+        id: "evening-wear",
+        title: "Evening Elegance",
+        description: "Turn heads at any event with our exclusive evening wear collection. Sophistication in every thread.",
+        action: "Shop Evening Wear",
+        href: "/shop/evening",
+        overlay: mark("Evening Wear"),
+        image: "https://images.unsplash.com/photo-1722805740302-7bf173339b80?w=1000&h=1000&fit=crop&fm=webp&q=90",
+        imageAlt: "Elegant evening dress",
+    },
+    {
+        id: "casual-essentials",
+        title: "Everyday Essentials",
+        description: "Elevate your daily wardrobe with high-quality basics that offer unparalleled comfort without compromising on style.",
+        action: "Shop Basics",
+        href: "/shop/basics",
+        overlay: mark("Essentials"),
+        image: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=1000&h=1000&fit=crop&fm=webp&q=90",
+        imageAlt: "High quality casual clothing on a rack",
+    }
+];
+
+const settings = {
+    height: "clamp(280px, 70cqi, 400px)",
+    gap: 16,
+    slatGap: 8,
+    slatWidth: 8,
+    radius: 0,
+    duration: 1000,
+    hoverGrow: true,
+    autoplay: false,
+    interval: 6000,
+    controls: true,
+};
 
 const FeaturedCollection = () => {
   return (
     <section style={{ padding: '80px 0', overflow: 'hidden' }}>
       <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-        <h3>Collections</h3>
+        <h3>Featured Collections</h3>
       </div>
-      <div className="container" style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'center' }}>
-        {/* Text Block */}
-        <motion.div
-          initial={{ opacity: 0, x: -60 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          style={{ flex: '1 1 350px', padding: '20px 0' }}
-        >
-          <h5 style={{ marginBottom: '20px', lineHeight: 1.4 }}>
-            Introducing the GOLD LABEL<br/>from ABC Clothes
-          </h5>
-          <p style={{ marginBottom: '30px', color: 'var(--color-body-text)', lineHeight: 1.8 }}>
-            Incorporating fine Italian tailoring with modern design, our Gold label suits are a fusion of quality materials and luxury fashion. The highest quality linens, silks and wools have been used to tailor these fine suits all the way from Milan, Italy.
-          </p>
-          <Link to="/shop" className="btn btn-outline">
-            View Collection
-          </Link>
-        </motion.div>
-
-        {/* Image */}
-        <motion.div
-          initial={{ opacity: 0, x: 60 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          style={{ flex: '1 1 400px' }}
-        >
-          <img
-            src="https://images.unsplash.com/photo-1505022610485-0249ba5b3675?w=900&h=700&fit=crop&auto=format&q=80"
-            alt="Gold Label Collection"
-            style={{ width: '100%', height: '550px', objectFit: 'cover', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}
-          />
-        </motion.div>
+      <div style={{ padding: '0 20px', width: '100%' }}>
+        <SqueezeCarousel 
+          slides={slides} 
+          label="Featured Collections" 
+          {...settings} 
+        />
       </div>
     </section>
   );

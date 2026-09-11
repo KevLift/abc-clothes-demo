@@ -53,7 +53,7 @@ const AdminReviewsPage = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {reviews.map((r) => (
-            <div key={r.id} style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #eee' }}>
+            <div key={r.id} style={{ background: 'white', padding: 16, borderRadius: 0, border: '1px solid #eee' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                 <StarRating value={r.rating} size={14} color="#e6a817" />
                 <strong>{r.title || 'Untitled'}</strong>

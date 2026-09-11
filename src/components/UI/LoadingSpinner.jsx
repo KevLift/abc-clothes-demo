@@ -23,7 +23,7 @@ const LoadingSpinner = () => {
           height: '50px',
           border: '3px solid var(--color-separator)',
           borderTop: '3px solid var(--color-accent)',
-          borderRadius: '50%'
+          borderRadius: 0
         }}
       />
     </div>

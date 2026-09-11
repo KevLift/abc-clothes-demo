@@ -92,7 +92,7 @@ const AdminLayout = () => {
                     color: 'white',
                     textDecoration: 'none',
                     backgroundColor: active ? '#34495e' : 'transparent',
-                    borderRadius: '4px',
+                    borderRadius: 0,
                     fontSize: '14px',
                   }}
                 >
@@ -124,7 +124,7 @@ const AdminLayout = () => {
                 padding: '8px 12px',
                 cursor: 'pointer',
                 width: '100%',
-                borderRadius: '4px',
+                borderRadius: 0,
               }}
             >
               Logout

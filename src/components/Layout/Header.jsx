@@ -59,8 +59,16 @@ const Header = () => {
 
   const navLinks = [
     { label: 'Home', to: '/' },
-    ...navItems.slice(0, 6),
-    { label: 'Shop', to: '/shop' },
+    { 
+      label: 'Shop All', 
+      to: '/shop',
+      dropdown: [
+        { label: 'Men', to: '/shop?category=men' },
+        { label: 'Women', to: '/shop?category=women' },
+        { label: 'Kids', to: '/shop?category=kids' },
+        { label: 'Wedding', to: '/shop?category=wedding' },
+      ]
+    },
     { label: 'About', to: '/about' },
     { label: 'Blog', to: '/blog' },
     { label: 'Contact', to: '/contact' },
@@ -91,54 +99,65 @@ const Header = () => {
             padding: isScrolled ? '14px 40px' : '18px 40px',
           }}
         >
-          <button
-            className="mobile-menu-btn"
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Open Menu"
-            style={{ color: textColor, padding: 0 }}
-          >
-            <FaBars size={22} />
-          </button>
+          {/* Left side: Mobile menu and Nav */}
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+            <button
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open Menu"
+              style={{ color: textColor, padding: 0, marginRight: '20px' }}
+            >
+              <FaBars size={22} />
+            </button>
+            <nav
+              className="desktop-nav"
+              style={{
+                gap: '28px',
+                fontFamily: 'var(--font-nav)',
+                fontSize: '11px',
+                textTransform: 'uppercase',
+                letterSpacing: '1.7px',
+                display: 'flex',
+              }}
+            >
+              {navLinks.map((item) => (
+                <div key={item.to + item.label} className={`nav-item-container ${item.dropdown ? 'has-dropdown' : ''}`}>
+                  <Link
+                    to={item.to}
+                    style={{ color: textColor }}
+                  >
+                    {item.label}
+                  </Link>
+                  {item.dropdown && (
+                    <div className="nav-dropdown-menu">
+                      {item.dropdown.map(subItem => (
+                        <Link key={subItem.to} to={subItem.to} className="nav-dropdown-link">{subItem.label}</Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </nav>
+          </div>
 
-          <Link
-            to="/"
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontWeight: 700,
-              fontSize: '22px',
-              letterSpacing: '4px',
-              textTransform: 'uppercase',
-              color: textColor,
-            }}
-          >
-            ABC CLOTHES
-          </Link>
+          {/* Center: Logo */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+            <Link
+              to="/"
+              className="header-logo"
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                color: textColor,
+              }}
+            >
+              ABC CLOTHES
+            </Link>
+          </div>
 
-          <nav
-            className="desktop-nav"
-            style={{
-              gap: '28px',
-              fontFamily: 'var(--font-nav)',
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '1.7px',
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-            }}
-          >
-            {navLinks.map((item) => (
-              <Link
-                key={item.to + item.label}
-                to={item.to}
-                style={{ color: textColor }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+          {/* Right side: Icons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flex: 1, justifyContent: 'flex-end' }}>
             <Select
               variant={isHeaderSolid ? 'default' : 'ghost'}
               value={currency}
@@ -172,7 +191,7 @@ const Header = () => {
                         right: '-8px',
                         background: 'var(--color-accent)',
                         color: 'white',
-                        borderRadius: '50%',
+                        borderRadius: 0,
                         width: '17px',
                         height: '17px',
                         display: 'flex',
@@ -195,7 +214,12 @@ const Header = () => {
       <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-        categoryLinks={navItems}
+        categoryLinks={[
+          { label: 'Men', to: '/shop?category=men' },
+          { label: 'Women', to: '/shop?category=women' },
+          { label: 'Kids', to: '/shop?category=kids' },
+          { label: 'Wedding', to: '/shop?category=wedding' },
+        ]}
         showShoppingLinks={showShopping}
       />
       <SearchOverlay />

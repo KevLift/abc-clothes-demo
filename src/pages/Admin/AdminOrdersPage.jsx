@@ -90,7 +90,7 @@ const AdminOrdersPage = () => {
 
       {loading ? <div>Loading orders...</div> : (
         <div style={{ display: 'grid', gridTemplateColumns: selected ? '1.2fr 1fr' : '1fr', gap: 20 }}>
-          <div style={{ background: 'white', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#f8f9fa' }}>
                 <tr>

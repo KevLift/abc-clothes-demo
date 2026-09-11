@@ -112,7 +112,7 @@ const AdminInquiriesPage = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: selected ? '1.1fr 1fr' : '1fr', gap: 20 }}>
-        <div style={{ background: 'white', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden' }}>
           {loading ? (
             <p style={{ padding: 20 }}>Loading...</p>
           ) : visibleItems.length === 0 ? (
@@ -132,7 +132,7 @@ const AdminInquiriesPage = () => {
                 <strong>{item.type}</strong>
                 {item.type === 'CONTACT' && (
                   <span style={{
-                    fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                    fontSize: 11, padding: '2px 8px', borderRadius: 0,
                     background: item.status === 'ANSWERED' ? '#e8f5e9' : '#fff3e0',
                     color: item.status === 'ANSWERED' ? '#2e7d32' : '#e65100',
                   }}
@@ -155,14 +155,14 @@ const AdminInquiriesPage = () => {
         </div>
 
         {selected && (
-          <div style={{ background: 'white', padding: 20, borderRadius: 8, alignSelf: 'start' }}>
+          <div style={{ background: 'white', padding: 20, borderRadius: 0, alignSelf: 'start' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <h3>{selected.subject || selected.type}</h3>
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>&times;</button>
             </div>
             <p style={{ fontSize: 13, color: '#666' }}>{selected.name ? `${selected.name} · ` : ''}{selected.email}</p>
             {selected.message ? (
-              <p style={{ background: '#f8f9fa', padding: 12, borderRadius: 4, marginTop: 10 }}>{selected.message}</p>
+              <p style={{ background: '#f8f9fa', padding: 12, borderRadius: 0, marginTop: 10 }}>{selected.message}</p>
             ) : selected.type === 'NEWSLETTER' ? (
               <p style={{ color: '#666', fontSize: 13, marginTop: 10 }}>
                 Newsletter subscriber{selected.createdAt ? ` since ${new Date(selected.createdAt).toLocaleDateString()}` : ''}.

@@ -27,7 +27,7 @@ const Toast = ({ message, type = 'success', isVisible, onClose }) => {
             backgroundColor: bgColor,
             color: 'white',
             padding: '15px 25px',
-            borderRadius: '4px',
+            borderRadius: 0,
             zIndex: 9999,
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
             display: 'flex',

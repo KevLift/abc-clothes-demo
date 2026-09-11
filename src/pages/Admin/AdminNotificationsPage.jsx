@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { notificationService } from '../../services/notificationService';
 import Select from '../../components/UI/Select';
 
-const cardStyle = { background: 'white', padding: 16, borderRadius: 8, marginBottom: 10, border: '1px solid var(--color-separator)' };
+const cardStyle = { background: 'white', padding: 16, borderRadius: 0, marginBottom: 10, border: '1px solid var(--color-separator)' };
 const inputStyle = { padding: 10, border: '1px solid var(--color-separator)', outline: 'none', fontFamily: 'var(--font-body)', fontSize: 14 };
 
 const STATUS_COLORS = {
@@ -48,7 +48,7 @@ const NotificationCard = ({ n, onRetry }) => {
 
       {n.failureReason && (
         <div style={{
-          marginTop: 10, padding: '8px 10px', borderRadius: 4, fontSize: 13,
+          marginTop: 10, padding: '8px 10px', borderRadius: 0, fontSize: 13,
           background: '#ffebee', color: '#c62828', whiteSpace: 'pre-wrap',
         }}>
           {n.failureReason}
@@ -69,11 +69,11 @@ const NotificationCard = ({ n, onRetry }) => {
               title={`email-${n.id}`}
               sandbox=""
               srcDoc={body}
-              style={{ width: '100%', height: 360, border: '1px solid var(--color-separator)', borderRadius: 4, marginTop: 8, background: 'white' }}
+              style={{ width: '100%', height: 360, border: '1px solid var(--color-separator)', borderRadius: 0, marginTop: 8, background: 'white' }}
             />
           ) : (
             <pre style={{
-              marginTop: 8, padding: 12, background: 'var(--color-light-bg)', borderRadius: 4,
+              marginTop: 8, padding: 12, background: 'var(--color-light-bg)', borderRadius: 0,
               fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 360, overflow: 'auto',
             }}>
               {body}

@@ -103,7 +103,7 @@ const ProductCard = ({ product }) => {
               style={{ 
                 position: 'absolute', top: '10px', right: '10px', zIndex: 20, 
                 backgroundColor: 'white', color: 'var(--color-accent)', border: 'none', 
-                borderRadius: '50%', width: '35px', height: '35px', display: 'flex', 
+                borderRadius: 0, width: '35px', height: '35px', display: 'flex', 
                 alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
               }}

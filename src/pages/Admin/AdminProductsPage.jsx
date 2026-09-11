@@ -165,7 +165,7 @@ const AdminProductsPage = () => {
       {loading ? (
         <div>Loading products...</div>
       ) : (
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ backgroundColor: '#f8f9fa' }}>
               <tr>

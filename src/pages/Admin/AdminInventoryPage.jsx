@@ -214,7 +214,7 @@ const AdminInventoryPage = () => {
         </div>
       </div>
 
-      <div style={{ background: 'white', padding: 20, borderRadius: 8, marginTop: 20 }}>
+      <div style={{ background: 'white', padding: 20, borderRadius: 0, marginTop: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, flexWrap: 'wrap', gap: 10 }}>
           <h3>All Inventory</h3>
           <form

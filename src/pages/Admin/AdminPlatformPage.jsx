@@ -6,7 +6,7 @@ const PLATFORM_ROLES = ['PLATFORM_ADMIN', 'PLATFORM_SUPPORT'];
 
 const cardStyle = {
   background: 'white',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: 20,
   border: '1px solid var(--color-separator)',
 };

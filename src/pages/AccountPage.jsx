@@ -45,7 +45,7 @@ const NotificationRow = ({ n, onRead }) => {
     <div style={{ borderBottom: '1px solid var(--color-separator)', padding: '14px 0', opacity: n.isRead ? 0.55 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
         {!n.isRead && (
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--color-accent)', flexShrink: 0 }} />
+          <span style={{ width: '7px', height: '7px', borderRadius: 0, background: 'var(--color-accent)', flexShrink: 0 }} />
         )}
         <strong>{title}</strong>
       </div>
@@ -64,7 +64,7 @@ const NotificationRow = ({ n, onRead }) => {
               title={`notification-${n.id}`}
               sandbox=""
               srcDoc={body}
-              style={{ width: '100%', height: '420px', border: '1px solid var(--color-separator)', borderRadius: '4px', marginTop: '8px', background: 'white' }}
+              style={{ width: '100%', height: '420px', border: '1px solid var(--color-separator)', borderRadius: 0, marginTop: '8px', background: 'white' }}
             />
           ) : (
             <p style={{ fontSize: '14px', marginTop: '8px', whiteSpace: 'pre-wrap' }}>{body}</p>
@@ -325,7 +325,7 @@ const AccountPage = () => {
                                 <img
                                   src={item.imageUrl || '/images/product-placeholder.svg'}
                                   alt=""
-                                  style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+                                  style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 0, flexShrink: 0 }}
                                   onError={(e) => { e.currentTarget.src = '/images/product-placeholder.svg'; }}
                                 />
                                 <span style={{ flex: 1 }}>{item.quantity}× {item.productName}</span>
@@ -441,7 +441,7 @@ const AccountPage = () => {
               {trackResult && (trackResult.error ? (
                 <p style={{ marginTop: '20px', color: '#c62828' }}>{trackResult.error}</p>
               ) : (
-                <div style={{ marginTop: '20px', border: '1px solid var(--color-separator)', borderRadius: '4px', padding: '16px' }}>
+                <div style={{ marginTop: '20px', border: '1px solid var(--color-separator)', borderRadius: 0, padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                     <strong>{trackResult.orderNumber}</strong>
                     <span style={{ fontWeight: 700, letterSpacing: '0.5px', color: 'var(--color-accent)' }}>

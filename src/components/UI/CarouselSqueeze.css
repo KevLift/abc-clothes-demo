@@ -1,0 +1,144 @@
+/* CarouselSqueeze.css */
+
+.sq-carousel {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.sq-controls {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.sq-viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.sq-strip {
+  display: flex;
+  height: 100%;
+  width: max-content;
+}
+
+.sq-tab {
+  position: relative;
+  isolation: isolate;
+  height: 100%;
+  flex-shrink: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background-color: var(--color-light-bg, #f3f4f6);
+  padding: 0;
+  outline: none;
+  border: none;
+}
+
+.sq-tab:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary-bg, #fff), 0 0 0 4px var(--sq-fill);
+}
+
+.sq-overlay {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 1rem;
+  padding-top: 4rem;
+}
+
+@media (min-width: 1024px) {
+  .sq-overlay {
+    padding: 1.5rem;
+    padding-top: 5rem;
+  }
+}
+
+.sq-panel-container {
+  margin-top: 1.5rem;
+  display: grid;
+}
+
+@media (min-width: 1280px) {
+  .sq-panel-container {
+    margin-top: 1.75rem;
+  }
+}
+
+.sq-panel {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1280px) {
+  .sq-panel {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2.5rem;
+  }
+}
+
+.sq-desc {
+  max-width: 46rem;
+  font-size: 15px;
+  line-height: 1.6;
+  text-wrap: balance;
+}
+
+@media (min-width: 1024px) {
+  .sq-desc {
+    font-size: 17px;
+  }
+}
+
+.sq-picture {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  height: 100%;
+  max-width: none;
+  transform: translateX(-50%);
+  object-fit: cover;
+}
+
+.sq-arrow {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  cursor: pointer;
+  place-items: center;
+  background-color: var(--sq-fill);
+  color: var(--sq-on-fill);
+  transition: opacity 0.2s;
+  outline: none;
+  border: none;
+}
+
+.sq-arrow:hover {
+  opacity: 0.85;
+}
+
+.sq-arrow:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary-bg, #fff), 0 0 0 4px var(--sq-fill);
+}
+
+
+
+.text-foreground {
+  color: var(--color-heading-text, #000);
+}
+
+.text-muted-foreground {
+  color: var(--color-body-text, #707070);
+}

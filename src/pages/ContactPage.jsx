@@ -95,7 +95,7 @@ const ContactPage = () => {
         </div>
         
         <div style={{ flex: '1 1 400px' }}>
-          <div style={{ backgroundColor: 'var(--color-light-bg)', padding: '40px', borderRadius: '4px', height: '100%' }}>
+          <div style={{ backgroundColor: 'var(--color-light-bg)', padding: '40px', borderRadius: 0, height: '100%' }}>
             <h3 style={{ marginBottom: '20px' }}>Store Information</h3>
             
             <div style={{ marginBottom: '30px' }}>

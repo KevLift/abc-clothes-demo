@@ -136,9 +136,21 @@ header {
   }
   
   .main-nav-row {
-    padding: 15px 20px !important;
+    padding: 12px 16px !important;
     justify-content: space-between !important;
   }
+  
+  .header-logo {
+    font-size: 16px !important;
+    letter-spacing: 2px !important;
+    white-space: nowrap;
+  }
+}
+
+.header-logo {
+  font-size: 24px;
+  letter-spacing: 5px;
+  white-space: nowrap;
 }
 
 /* =====================
@@ -168,7 +180,7 @@ a:hover {
 .hero-content-box {
   background-color: rgba(0, 0, 0, 0.4);
   padding: 40px;
-  border-radius: 8px;
+  border-radius: 0;
   max-width: 800px;
   width: 90%;
   margin: 0 auto;
@@ -200,7 +212,7 @@ a:hover {
   background: rgba(0,0,0,0.3);
   width: 52px;
   height: 52px;
-  border-radius: 50%;
+  border-radius: 0;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
@@ -275,9 +287,59 @@ a:hover {
 
 ::-webkit-scrollbar-thumb {
   background: #ccc;
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent);
+}
+
+/* =====================
+   HEADER NAV DROPDOWN
+   ===================== */
+.nav-item-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 10px 0;
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: translateY(10px);
+  background-color: var(--color-primary-bg, #fff);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px 25px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 100;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.has-dropdown:hover .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.nav-dropdown-link {
+  color: var(--color-heading-text, #000);
+  font-family: var(--font-nav);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.nav-dropdown-link:hover {
+  color: var(--color-accent);
 }

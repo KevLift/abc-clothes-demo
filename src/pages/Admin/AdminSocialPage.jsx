@@ -3,7 +3,7 @@ import { socialService } from '../../services/socialService';
 
 const cardStyle = {
   background: 'white',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: 16,
   border: '1px solid var(--color-separator)',
 };

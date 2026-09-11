@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const cardStyle = {
   background: 'white',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: 20,
   border: '1px solid var(--color-separator)',
   maxWidth: 560,

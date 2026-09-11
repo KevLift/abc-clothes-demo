@@ -83,26 +83,26 @@ const AdminAnalyticsPage = () => {
 
       {loading ? <p>Loading...</p> : !summary ? null : (
         <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap' }}>
-          <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
+          <div style={{ background: 'white', padding: 20, borderRadius: 0, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>Revenue</div>
             <div style={{ fontSize: 24, fontWeight: 'bold' }}>{formatPrice(summary.revenue || 0, summary.currency)}</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
+          <div style={{ background: 'white', padding: 20, borderRadius: 0, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>Orders</div>
             <div style={{ fontSize: 24, fontWeight: 'bold' }}>{summary.orderCount ?? summary.totalOrders ?? 0}</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
+          <div style={{ background: 'white', padding: 20, borderRadius: 0, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>AOV</div>
             <div style={{ fontSize: 24, fontWeight: 'bold' }}>{formatPrice(summary.averageOrderValue || 0, summary.currency)}</div>
           </div>
-          <div style={{ background: 'white', padding: 20, borderRadius: 8, minWidth: 180 }}>
+          <div style={{ background: 'white', padding: 20, borderRadius: 0, minWidth: 180 }}>
             <div style={{ color: '#7f8c8d', fontSize: 13 }}>Fulfillment Rate</div>
             <div style={{ fontSize: 24, fontWeight: 'bold' }}>{fulfillmentPct}</div>
           </div>
         </div>
       )}
       <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap', marginTop: 20 }}>
-        <div style={{ background: 'white', padding: 20, borderRadius: 8, flex: '1 1 280px' }}>
+        <div style={{ background: 'white', padding: 20, borderRadius: 0, flex: '1 1 280px' }}>
           <h3>Top Products</h3>
           {(summary?.topProducts || []).length === 0 ? (
             <p style={{ color: '#95a5a6' }}>No sales in this range.</p>
@@ -113,7 +113,7 @@ const AdminAnalyticsPage = () => {
           ))}
         </div>
 
-        <div style={{ background: 'white', padding: 20, borderRadius: 8, flex: '1 1 280px' }}>
+        <div style={{ background: 'white', padding: 20, borderRadius: 0, flex: '1 1 280px' }}>
           <h3>Payment Type</h3>
           {(summary?.paymentMethodBreakdown || []).length === 0 ? (
             <p style={{ color: '#95a5a6' }}>No orders in this range.</p>
@@ -125,7 +125,7 @@ const AdminAnalyticsPage = () => {
           ))}
         </div>
 
-        <div style={{ background: 'white', padding: 20, borderRadius: 8, flex: '1 1 280px' }}>
+        <div style={{ background: 'white', padding: 20, borderRadius: 0, flex: '1 1 280px' }}>
           <h3>Order Status</h3>
           {(summary?.orderStatusBreakdown || []).length === 0 ? (
             <p style={{ color: '#95a5a6' }}>No orders in this range.</p>

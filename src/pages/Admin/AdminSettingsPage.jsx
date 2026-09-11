@@ -77,7 +77,7 @@ const AdminSettingsPage = () => {
           {message.text}
         </p>
       )}
-      <form onSubmit={save} style={{ background: 'white', padding: 20, borderRadius: 8, maxWidth: 520 }}>
+      <form onSubmit={save} style={{ background: 'white', padding: 20, borderRadius: 0, maxWidth: 520 }}>
         {FIELDS.map(({ key, type }) => (
           <div key={key} style={{ marginBottom: 12 }}>
             <label htmlFor={`setting-${key}`} style={{ display: 'block', marginBottom: 4 }}>

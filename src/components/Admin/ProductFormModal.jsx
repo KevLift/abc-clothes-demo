@@ -11,11 +11,11 @@ const modalStyle = {
   justifyContent: 'center', alignItems: 'center', zIndex: 1000,
 };
 const modalContentStyle = {
-  backgroundColor: 'white', padding: '30px', borderRadius: '8px',
+  backgroundColor: 'white', padding: '30px', borderRadius: 0,
   width: '100%', maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto',
 };
 const formGroupStyle = { marginBottom: '15px' };
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' };
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: 0 };
 
 const emptyVariant = () => ({
   name: '', sku: '', price: '', compareAtPrice: '', size: '', color: '',
@@ -512,7 +512,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
           </div>
 
           {categoryAttributes.length > 0 && (
-            <div style={{ border: '1px solid #eee', borderRadius: 4, padding: 12, marginBottom: 15 }}>
+            <div style={{ border: '1px solid #eee', borderRadius: 0, padding: 12, marginBottom: 15 }}>
               <h4 style={{ marginBottom: 8, fontSize: 14 }}>Category Details</h4>
               <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
                 These fields come from the selected category and show up as the spec sheet on the product page.
@@ -581,7 +581,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
           </label>
 
           {!productToEdit && (
-            <div style={{ border: '1px solid #eee', borderRadius: '4px', padding: '12px', marginBottom: '20px' }}>
+            <div style={{ border: '1px solid #eee', borderRadius: 0, padding: '12px', marginBottom: '20px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
                   type="checkbox"
@@ -636,9 +636,9 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
                   {showSocialPreview && (
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
                       {(formData.socialPlatforms.length ? formData.socialPlatforms : ['FACEBOOK']).map((platform) => (
-                        <div key={platform} style={{ width: 260, border: '1px solid #ddd', borderRadius: 8, overflow: 'hidden', background: 'white' }}>
+                        <div key={platform} style={{ width: 260, border: '1px solid #ddd', borderRadius: 0, overflow: 'hidden', background: 'white' }}>
                           <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #eee' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: platform === 'FACEBOOK' ? '#1877f2' : '#e1306c' }} />
+                            <div style={{ width: 28, height: 28, borderRadius: 0, background: platform === 'FACEBOOK' ? '#1877f2' : '#e1306c' }} />
                             <div>
                               <div style={{ fontSize: 12, fontWeight: 'bold' }}>Your Store</div>
                               <div style={{ fontSize: 10, color: '#999' }}>{platform === 'FACEBOOK' ? 'Facebook Page' : 'Instagram'} · Just now</div>
@@ -668,7 +668,7 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
             Set stock quantity per variant — orders reduce stock automatically.
           </p>
           {formData.variants.map((v, index) => (
-            <div key={index} style={{ border: '1px solid #eee', padding: '12px', marginBottom: '10px', borderRadius: '4px' }}>
+            <div key={index} style={{ border: '1px solid #eee', padding: '12px', marginBottom: '10px', borderRadius: 0 }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <input style={inputStyle} placeholder="Size (e.g. M, L, XL)" value={v.size} onChange={(e) => updateVariant(index, 'size', e.target.value)} />
                 <input style={inputStyle} placeholder="Color (e.g. Navy, Black)" value={v.color} onChange={(e) => updateVariant(index, 'color', e.target.value)} />
@@ -718,14 +718,14 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
                           src={img.previewUrl}
                           alt=""
                           style={{
-                            width: 80, height: 80, objectFit: 'cover', borderRadius: 4,
+                            width: 80, height: 80, objectFit: 'cover', borderRadius: 0,
                             border: i === 0 ? '3px solid #27ae60' : '1px solid #ddd',
                           }}
                         />
                         {i === 0 && (
                           <span style={{
                             position: 'absolute', top: 2, left: 2, background: '#27ae60', color: 'white',
-                            fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                            fontSize: 9, padding: '1px 5px', borderRadius: 0,
                           }}>
                             COVER
                           </span>
@@ -763,14 +763,14 @@ const ProductFormModal = ({ isOpen, onClose, onSave, productToEdit }) => {
                         src={img.url}
                         alt=""
                         style={{
-                          width: 80, height: 80, objectFit: 'cover', borderRadius: 4,
+                          width: 80, height: 80, objectFit: 'cover', borderRadius: 0,
                           border: img.primary ? '3px solid #27ae60' : '1px solid #ddd',
                         }}
                       />
                       {img.primary && (
                         <span style={{
                           position: 'absolute', top: 2, left: 2, background: '#27ae60', color: 'white',
-                          fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                          fontSize: 9, padding: '1px 5px', borderRadius: 0,
                         }}>
                           COVER
                         </span>

@@ -61,7 +61,7 @@ const AdminPaymentsPage = () => {
       <h1 style={{ marginBottom: 20 }}>Payments</h1>
       {message && (
         <p style={{
-          padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 14,
+          padding: '10px 14px', borderRadius: 0, marginBottom: 16, fontSize: 14,
           background: message.type === 'ok' ? '#e8f5e9' : '#ffebee',
           color: message.type === 'ok' ? '#1b5e20' : '#c62828',
         }}>
@@ -69,7 +69,7 @@ const AdminPaymentsPage = () => {
         </p>
       )}
 
-      <div style={{ background: 'white', borderRadius: 8, overflowX: 'auto', marginBottom: 20 }}>
+      <div style={{ background: 'white', borderRadius: 0, overflowX: 'auto', marginBottom: 20 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ background: '#f8f9fa' }}>
             <tr>
@@ -116,7 +116,7 @@ const AdminPaymentsPage = () => {
       </div>
 
       {owner && (
-        <form id="refund-form" onSubmit={refund} style={{ background: 'white', padding: 20, borderRadius: 8, maxWidth: 460 }}>
+        <form id="refund-form" onSubmit={refund} style={{ background: 'white', padding: 20, borderRadius: 0, maxWidth: 460 }}>
           <h3 style={{ marginBottom: 4 }}>Refund (owner only)</h3>
           <p style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>
             Use the <strong>Refund</strong> link on a row to fill this in. Leave the amount blank for a full refund.
