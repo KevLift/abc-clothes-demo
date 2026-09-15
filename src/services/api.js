@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const CART_SESSION_KEY = 'abc_cart_session';
 const USER_KEY = 'abc_user';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export const getCartSessionId = () => {
   let sessionId = localStorage.getItem(CART_SESSION_KEY);
@@ -64,7 +65,7 @@ export const unwrapPage = (payload) => {
 };
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -78,7 +79,7 @@ const refreshAccessToken = async () => {
     throw new Error('No refresh token');
   }
 
-  const { data } = await axios.post('/api/v1/auth/refresh', {
+  const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
     refreshToken: user.refreshToken,
   });
   const payload = unwrap(data);
